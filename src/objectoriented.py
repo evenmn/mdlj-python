@@ -4,31 +4,102 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 
 class MolecularDynamics:
-    def __init__(self, numparticles=2, numdimensions=3, T=5, dt=0.01, size=16):
-    
-        # set global constants
-        self.numparticles = numparticles
-        self.numdimensions = numdimensions
+    def __init__(self, positions='fcc', 
+                       velocity=None, 
+                       cells=2, 
+                       lencell=3, 
+                       numdimensions=3, 
+                       T=5, 
+                       dt=0.01, 
+                       size=16):
+        '''
+        Initialize the MolecularDynamics class. This includes defining the
+        time scales, initialize positions and velocities, and define
+        matplotlib fixes.
+        
+        Arguments:
+        ----------
+        positions       {list}  :   Nested list with all coordinates of all
+                                    particles. Face-centered cube is default.
+        velocity        {list}  :   Nested list with all velocities of all
+                                    particles. No velocity is default.
+        cells           {int}   :   Number of unit cells
+        lencell         {float} :   Length of unit cell
+        numdimensions   {int}   :   Number of dimensions
+        T               {float} :   Total time
+        dt              {float} :   Time step
+        size            {int}   :   Label size
+        
+        cells, lencell and numdimensions are only needed by fcc
+        '''
+        
+        # Define time scale and number of steps
         self.T = T
         self.dt = dt
         self.N = int(T/dt)
-
-        # declare arrays
         self.time = np.linspace(0, T, self.N+1)
-        self.r = np.zeros((self.N+1, numparticles, numdimensions))
-        self.v = np.zeros((self.N+1, numparticles, numdimensions))
-        self.d = np.zeros((self.N+1, numparticles, numparticles))
+        
+        # Initialize positions
+        if positions=='fcc':
+            self.face_centered_cube(cells, lencell, numdimensions)
+        elif type(positions)==list:
+            self.numparticles = len(positions)
+            self.numdimensions = len(positions[0])
+            self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
+            self.r[0] = positions
+        elif positions is None:
+            raise TypeError("Initial positions are not defined")
+        else:
+            raise TypeError("Initial positions needs to be a list of positions")
+        
+        self.dumpPositions(0, "../data/initialPositions.data")
+        
+        # Initialize velocities
+        if velocity==None:
+            self.v = np.zeros((self.N+1, self.numparticles, numdimensions))
+        elif velocity=="gauss":
+            self.v = np.random.normal(0, 1, size=(self.N+1, numparticles, numdimensions))
+        elif type(velocity) == list:
+            self.v[0] = velocity
+
+        # declare distance matrix
+        self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
         
         # for plotting
         self.size = size                        # Label size in plots
         self.label_size = {"size":str(size)}    # Dictionary with size
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
-
-    def initialize(self, position=None, velocity=None, n=2, d=3):
-        ''' Initialize positions and velocity. '''
-        if position==None:
-            counter = 0
+        
+    def face_centered_cube(self, n, d, dim):
+        '''
+        Creating a face-centered cube of n^dim unit cells with
+        4 particles in each unit cell. The number of particles
+        then becomes (dim+1) * n ^ dim. Each unit cell has a 
+        length d.
+        
+        Arguments:
+        ----------
+        n       {int}   :   Number of unit cells in each dimension
+        d       {float} :   Length of a unit cell
+        dim     {int}   :   Number of dimensions
+        '''
+        self.numparticles = (dim+1) * n ** dim
+        self.r = np.zeros((self.N+1, self.numparticles, dim))
+        counter = 0
+        if dim==1:
+            for i in range(n):
+                self.r[0,counter+0] = [i]
+                self.r[0,counter+1] = [0.5+i]
+                counter +=2
+        elif dim==2:
+            for i in range(n):
+                for j in range(n):
+                    self.r[0,counter+0] = [i, j]
+                    self.r[0,counter+1] = [i, 0.5+j]
+                    self.r[0,counter+2] = [0.5+i, j]
+                    counter += 3
+        elif dim==3:
             for i in range(n):
                 for j in range(n):
                     for k in range(n):
@@ -37,16 +108,10 @@ class MolecularDynamics:
                         self.r[0,counter+2] = [0.5+i, j, 0.5+k]
                         self.r[0,counter+3] = [0.5+i, 0.5+j, k]
                         counter += 4
-            self.r[0] *= d
         else:
-            self.r[0] = position
-        
-        self.dumpPositions(0)
-        
-        if velocity==None:
-            pass
-        else:
-            self.v[0] = velocity
+            raise ValueError("The number of dimensions needs to be in [1,3]")
+        self.r[0] *= d
+        return self.r[0]
             
     def calculateDistanceMatrix(self,t):
         ''' Compute the distance matrix at timestep t. '''
@@ -105,15 +170,26 @@ class MolecularDynamics:
         a_new = potential(t+1)
         self.v[t+1] = self.v[t] + 0.5 * (a_new + a) * self.dt
         
-    def dumpPositions(self, t, filename="../data_files/test.data"):
+    def dumpPositions(self, t, dumpfile):
         ''' Dump positions to file. '''
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
-        np.savetxt(filename, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
+        np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
     
-    def simulate(self, potential, integrator, dump=False):
-        ''' Integration loop. '''
+    def simulate(self, potential, integrator, dumpfile=None):
+        ''' Integration loop. 
         
-        if dump: f=open("../data_files/test.data",'ab')
+        Arguments:
+        ----------
+        potential       {func}  : Function defining the inter-atomic potential
+        integrator      {func}  : Function defining the integrator
+        dumpfile        {str}   : Filename that all the positions shoudl be
+                                  dumped to. If not specified, positions are
+                                  not dumped.  
+        '''
+        
+        if dumpfile is not None: 
+            f=open(dumpfile,'ab')
+            self.dumpPositions(0,f)
         
         from tqdm import tqdm
         for t in tqdm(range(self.N)):
@@ -122,9 +198,9 @@ class MolecularDynamics:
             integrator(t, potential)
             
             # dump positions to file
-            if dump: self.dumpPositions(t+1,f)
+            if dumpfile is not None: self.dumpPositions(t+1,f)
             
-        if dump: f.close()
+        if dumpfile is not None: f.close()
         self.calculateDistanceMatrix(self.N)
         
     def plot_distance(self):
