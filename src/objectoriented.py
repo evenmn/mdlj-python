@@ -7,7 +7,7 @@ class MolecularDynamics:
     def __init__(self, positions='fcc', 
                        velocity=None, 
                        cells=2, 
-                       lencell=3, 
+                       lenbulk=20, 
                        numdimensions=3, 
                        T=5, 
                        dt=0.01, 
@@ -41,7 +41,7 @@ class MolecularDynamics:
         
         # Initialize positions
         if positions=='fcc':
-            self.face_centered_cube(cells, lencell, numdimensions)
+            self.face_centered_cube(cells, lenbulk, numdimensions)
         elif type(positions)==list:
             self.numparticles = len(positions)
             self.numdimensions = len(positions[0])
@@ -61,9 +61,6 @@ class MolecularDynamics:
             self.v = np.random.normal(0, 1, size=(self.N+1, self.numparticles, self.numdimensions))
         elif type(velocity) == list:
             self.v[0] = velocity
-
-        # declare distance matrix
-        self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
         
         # print to terminal
         self.print_to_terminal()
@@ -86,17 +83,17 @@ class MolecularDynamics:
         print(42 * "=" + "\n\n")
         
         
-    def face_centered_cube(self, n, d, dim):
+    def face_centered_cube(self, n, L, dim):
         '''
         Creating a face-centered cube of n^dim unit cells with
         4 particles in each unit cell. The number of particles
         then becomes (dim+1) * n ^ dim. Each unit cell has a 
-        length d.
+        length d. L=nd
         
         Arguments:
         ----------
         n               {int}   :   Number of unit cells in each dimension
-        d               {float} :   Length of a unit cell
+        L               {float} :   Length of bulk
         dim             {int}   :   Number of dimensions
         '''
         self.numparticles = (dim+1) * n ** dim
@@ -126,7 +123,7 @@ class MolecularDynamics:
                         counter += 4
         else:
             raise ValueError("The number of dimensions needs to be in [1,3]")
-        self.r[0] *= d
+        self.r[0] *= L/n
         return self.r[0]
             
     def calculateDistanceMatrix(self, t):
@@ -144,8 +141,8 @@ class MolecularDynamics:
         y = self.r[t][np.newaxis,:,:]
         dr = x - y
         del x, y
-        self.d[t] = np.einsum('ijk,ijk->ij',dr,dr)
-        return dr
+        d = np.einsum('ijk,ijk->ij',dr,dr)
+        return d, dr
         
     def lennardJones(self, t):
         ''' 
@@ -156,29 +153,32 @@ class MolecularDynamics:
         ----------
         t               {int}   :   Current time step.
         '''
-        dr = self.calculateDistanceMatrix(t)
-        l = np.nan_to_num(self.d[t]**(-3))          # 1/r^6
+        d, dr = self.calculateDistanceMatrix(t)
+        l = np.nan_to_num(d**(-3))                  # 1/r^6
         m = l**2                                    # 1/r^12
-        factor = np.divide(2 * m - l, self.d[t])    # (2/r^12 - 1/r^6)/r^2
-        del l, m
+        if self.distance: self.d[t] = d
+        if self.poteng: self.lennardJonesEnergy(t, m - l)
+        factor = np.divide(2 * m - l, d)            # (2/r^12 - 1/r^6)/r^2
+        del m, l, d
         factor[factor == np.inf] = 0
         return - 24 * np.einsum('ij,ijk->jk',factor,dr)
-        del dr
+        del dr, factor
         
-    def lennardJonesEnergy(self):
+    def lennardJonesEnergy(self, t, u):
         ''' 
-        Returns the potential energy from the Lennard-Jones potential. 
-        This function is never called in the integration loop, but can 
-        be used to obtain the energy of the system afterwards.
+        Calculates the potential energy at timestep t, based on 
+        the potential energies of all particles stored in the matrix
+        u.
+        
+        Arguments:
+        ----------
+        t               {int}       :   Current timestep
+        u               {ndarray}   :   Array contaiing the potential energy 
+                                        of all the particles.
         '''
-        l = np.nan_to_num(self.d**(-3))             # 1/r^6
-        m = l**2                                    # 1/r^12
-        u = m - l
-        del l, m
         u[u == np.inf] = 0
-        p = 4 * u.sum(axis=1).sum(axis=1)/2
+        self.u[t] = 2 * u.sum(axis=0).sum(axis=0)       # Multiply with 4 / 2
         del u
-        return p - np.min(p)
         
     def kineticEnergy(self):
         ''' 
@@ -256,19 +256,29 @@ class MolecularDynamics:
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
         np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
     
-    def simulate(self, potential, integrator, dumpfile=None):
+    def simulate(self, potential, integrator, poteng=False, distance=False, cutoff=3.0, dumpfile=None):
         ''' 
         Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
         Arguments:
         ----------
-        potential       {func}  : Function defining the inter-atomic potential
-        integrator      {func}  : Function defining the integrator
-        dumpfile        {str}   : Filename that all the positions should be
-                                  dumped to. If not specified, positions are
-                                  not dumped.  
+        potential       {func}  :   Function defining the inter-atomic potential
+        integrator      {func}  :   Function defining the integrator
+        poteng          {bool}  :   Boolean saying whether or not the potential
+                                    energy should be calculated and stored.
+        distance        {bool}  :   Boolean saying whether or not the distance
+                                    matrix should be stored. 
+        cutoff          {float} :   Cutoff distance
+        dumpfile        {str}   :   Filename that all the positions should be
+                                    dumped to. If not specified, positions are
+                                    not dumped.  
         '''
+        self.cutoff_sqrd = cutoff * cutoff
+        self.poteng = poteng
+        self.distance = distance
+        if distance: self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
+        if poteng: self.u = np.zeros(self.N+1) # Potential energy
         if dumpfile is not None: 
             f=open(dumpfile,'ab')       # Open dumpfile
             self.dumpPositions(0,f)     # Dump initial positions
@@ -277,7 +287,7 @@ class MolecularDynamics:
             integrator(t, potential)    # integrate to find velocities and positions
             if dumpfile is not None: self.dumpPositions(t+1,f) # dump positions to file
         if dumpfile is not None: f.close()      # Close dumpfile
-        self.calculateDistanceMatrix(self.N)    # Calculate final distance 
+        if distance: self.d[self.N] = self.calculateDistanceMatrix(self.N)[0]    # Calculate final distance 
         
     def plot_distance(self):
         ''' 
@@ -302,10 +312,9 @@ class MolecularDynamics:
         (which in our case is Lennard-Jones).
         '''
         k = self.kineticEnergy()        # Kinetic energy
-        p = self.lennardJonesEnergy()   # Potential energy
-        e = k + p                       # Total energy
+        e = k + self.u                  # Total energy
         plt.plot(self.time, k, label="Kinetic")
-        plt.plot(self.time, p, label="Potential")
+        plt.plot(self.time, self.u, label="Potential")
         plt.plot(self.time, e, label="Total energy")
         plt.legend(loc="best", fontsize=self.size)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
@@ -314,6 +323,6 @@ class MolecularDynamics:
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION
-    simulator = MolecularDynamics(positions=[[0.0], [1.5]], T=5, dt=0.01)
-    simulator.simulate(potential=obj.lennardJones, integrator=obj.eulerChromer)
-    simulator.plot_distance()
+    obj = MolecularDynamics(positions=[[0.0], [1.5]], T=5, dt=0.01)
+    obj.simulate(potential=obj.lennardJones, integrator=obj.eulerChromer)
+    obj.plot_distance()
