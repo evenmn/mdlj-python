@@ -56,20 +56,35 @@ class MolecularDynamics:
         
         # Initialize velocities
         if velocity==None:
-            self.v = np.zeros((self.N+1, self.numparticles, numdimensions))
+            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
         elif velocity=="gauss":
-            self.v = np.random.normal(0, 1, size=(self.N+1, numparticles, numdimensions))
+            self.v = np.random.normal(0, 1, size=(self.N+1, self.numparticles, self.numdimensions))
         elif type(velocity) == list:
             self.v[0] = velocity
 
         # declare distance matrix
         self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
         
+        # print to terminal
+        self.print_to_terminal()
+        
         # for plotting
         self.size = size                        # Label size in plots
         self.label_size = {"size":str(size)}    # Dictionary with size
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
+        
+    def print_to_terminal(self):
+        '''
+        Print information to terminal
+        '''
+        print("\n\n" + 10 * "=", " SYSTEM INFORMATION ", 10 * "=")
+        print("Number of particles:  ", self.numparticles)
+        print("Number of dimensions: ", self.numdimensions)
+        print("Total time:           ", self.T, " ps")
+        print("Timestep:             ", self.dt, " ps")
+        print(42 * "=" + "\n\n")
+        
         
     def face_centered_cube(self, n, d, dim):
         '''
@@ -80,11 +95,12 @@ class MolecularDynamics:
         
         Arguments:
         ----------
-        n       {int}   :   Number of unit cells in each dimension
-        d       {float} :   Length of a unit cell
-        dim     {int}   :   Number of dimensions
+        n               {int}   :   Number of unit cells in each dimension
+        d               {float} :   Length of a unit cell
+        dim             {int}   :   Number of dimensions
         '''
         self.numparticles = (dim+1) * n ** dim
+        self.numdimensions = dim
         self.r = np.zeros((self.N+1, self.numparticles, dim))
         counter = 0
         if dim==1:
@@ -113,8 +129,17 @@ class MolecularDynamics:
         self.r[0] *= d
         return self.r[0]
             
-    def calculateDistanceMatrix(self,t):
-        ''' Compute the distance matrix at timestep t. '''
+    def calculateDistanceMatrix(self, t):
+        ''' 
+        Compute the distance matrix (squared) at timestep t. In the
+        integration loop, we only need the distance squared, which 
+        means that we do not need to take the square-root of the 
+        distance. This save some cpu time.
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current time step.
+        '''
         x = self.r[t][:,np.newaxis,:]
         y = self.r[t][np.newaxis,:,:]
         dr = x - y
@@ -122,104 +147,163 @@ class MolecularDynamics:
         self.d[t] = np.einsum('ijk,ijk->ij',dr,dr)
         return dr
         
-    def lennardJones(self,t):
-        ''' Lennard-Jones inter-atomic potential. '''
+    def lennardJones(self, t):
+        ''' 
+        Lennard-Jones inter-atomic force. This is used in the
+        integration loop to calculate the acceleration of particles. 
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current time step.
+        '''
         dr = self.calculateDistanceMatrix(t)
-        l = np.nan_to_num(self.d[t]**(-3))
-        m = np.square(l)
-        factor = np.divide(2 * m - l, self.d[t])
+        l = np.nan_to_num(self.d[t]**(-3))          # 1/r^6
+        m = l**2                                    # 1/r^12
+        factor = np.divide(2 * m - l, self.d[t])    # (2/r^12 - 1/r^6)/r^2
         del l, m
         factor[factor == np.inf] = 0
-        return - 6 * np.einsum('ij,ijk->jk',factor,dr)
+        return - 24 * np.einsum('ij,ijk->jk',factor,dr)
         del dr
         
     def lennardJonesEnergy(self):
-        ''' Returns the potential energy from the Lennard-Jones potential. '''
-        l = np.nan_to_num(self.d**(-3/2))
-        m = np.square(l)
+        ''' 
+        Returns the potential energy from the Lennard-Jones potential. 
+        This function is never called in the integration loop, but can 
+        be used to obtain the energy of the system afterwards.
+        '''
+        l = np.nan_to_num(self.d**(-3))             # 1/r^6
+        m = l**2                                    # 1/r^12
         u = m - l
         del l, m
         u[u == np.inf] = 0
-        p = u.sum(axis=1).sum(axis=1)/2
+        p = 4 * u.sum(axis=1).sum(axis=1)/2
         del u
         return p - np.min(p)
         
     def kineticEnergy(self):
-        ''' Returns the total kinetic energy for each timestep. '''
+        ''' 
+        Returns the total kinetic energy for each timestep.
+        This function is never called in the integration loop, but can 
+        be used to obtain the energy of the system afterwards.
+        '''
         kPar = np.sum(np.square(self.v), axis=2)
         return np.sum(kPar, axis=1)/2
         del kPar
         
-    def forwardEuler(self,t,potential):
-        ''' Forward Euler integration. '''
+    def forwardEuler(self, t, potential):
+        ''' 
+        Forward-Euler numerical integration. This function gets the
+        acceleration from a potential function. In our case, this
+        potential is Lennard-Jones. Based on the acceleration, it
+        finds the velocity at the current timestep t using the 
+        Forward-Euler integration scheme. 
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current timestep.
+        potential       {func}  :   Inter-atomic potential (Lennard-Jones)
+        '''
         # calculate force acting on all the particles
         a = potential(t)
         self.v[t+1] = self.v[t] + a * self.dt
         self.r[t+1] = self.r[t] + self.v[t] * self.dt
         
-    def eulerChromer(self,t,potential):
-        ''' Euler-Chromer integration. '''
+    def eulerChromer(self, t, potential):
+        ''' 
+        Euler-Chromer numerical integration. This function gets the
+        acceleration from a potential function. In our case, this
+        potential is Lennard-Jones. Based on the acceleration, it
+        finds the velocity at the current timestep t using the 
+        Euler-Chromer integration scheme. 
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current timestep.
+        potential       {func}  :   Inter-atomic potential (Lennard-Jones)
+        '''
         a = potential(t)
         self.v[t+1] = self.v[t] + a * self.dt
         self.r[t+1] = self.r[t] + self.v[t+1] * self.dt
         
-    def velocityVerlet(self,t,potential):
-        ''' Velocity-Verlet integration. '''
+    def velocityVerlet(self, t, potential):
+        ''' 
+        Velocity-Verlet numerical integration. This function gets the
+        acceleration from a potential function. In our case, this
+        potential is Lennard-Jones. Based on the acceleration, it
+        finds the velocity at the current timestep t using the 
+        Velocity-Verlet integration scheme. 
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current timestep.
+        potential       {func}  :   Inter-atomic potential (Lennard-Jones)
+        '''
         a = potential(t)
         self.r[t+1] = self.r[t] + self.v[t] * self.dt + 0.5 * a * self.dt**2
         a_new = potential(t+1)
         self.v[t+1] = self.v[t] + 0.5 * (a_new + a) * self.dt
         
     def dumpPositions(self, t, dumpfile):
-        ''' Dump positions to file. '''
+        ''' 
+        Dumping positions at timestep t to a dumpfile. We use the xyz-
+        format, which can easily be visualized using Ovito.
+        
+        Arguments:
+        ----------
+        t               {int}   :   Current timestep.
+        dumpfile        {str}   :   Name and address of dumpfile
+        '''
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
         np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
     
     def simulate(self, potential, integrator, dumpfile=None):
-        ''' Integration loop. 
+        ''' 
+        Integration loop. Computes the time-development of position and 
+        velocity using a given integrator and inter-atomic potential.
         
         Arguments:
         ----------
         potential       {func}  : Function defining the inter-atomic potential
         integrator      {func}  : Function defining the integrator
-        dumpfile        {str}   : Filename that all the positions shoudl be
+        dumpfile        {str}   : Filename that all the positions should be
                                   dumped to. If not specified, positions are
                                   not dumped.  
         '''
-        
         if dumpfile is not None: 
-            f=open(dumpfile,'ab')
-            self.dumpPositions(0,f)
-        
+            f=open(dumpfile,'ab')       # Open dumpfile
+            self.dumpPositions(0,f)     # Dump initial positions
         from tqdm import tqdm
-        for t in tqdm(range(self.N)):
-            
-            # integrate to find velocities and positions
-            integrator(t, potential)
-            
-            # dump positions to file
-            if dumpfile is not None: self.dumpPositions(t+1,f)
-            
-        if dumpfile is not None: f.close()
-        self.calculateDistanceMatrix(self.N)
+        for t in tqdm(range(self.N)):   # Integration loop
+            integrator(t, potential)    # integrate to find velocities and positions
+            if dumpfile is not None: self.dumpPositions(t+1,f) # dump positions to file
+        if dumpfile is not None: f.close()      # Close dumpfile
+        self.calculateDistanceMatrix(self.N)    # Calculate final distance 
         
     def plot_distance(self):
-        ''' Plot distance between all particles. '''
+        ''' 
+        Plot distance between all particles. The plot will contain a 
+        graph for each particle pair, giving N(N-1)/2 graphs. It is 
+        recommended to use just for a small number of particles.
+        '''
+        distance = np.sqrt(self.d)
         for i in range(self.numparticles):
             for j in range(i):
-                plt.plot(self.time, self.d[:,i,j], label="$i={}$, $j={}$".format(i,j))
+                plt.plot(self.time, distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=self.size)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel("$r_{ij}$", **self.label_size)
         plt.show()
         
     def plot_energy(self):
-        ''' Plot kinetic, potential and total energy. '''
-        
+        ''' 
+        This function plots the kinetic, potential and total energy.
+        The kinetic energy is taken from the kineticEnergy function,
+        while the potential energy is taken from the specified potential
+        (which in our case is Lennard-Jones).
+        '''
         k = self.kineticEnergy()        # Kinetic energy
         p = self.lennardJonesEnergy()   # Potential energy
         e = k + p                       # Total energy
-        
         plt.plot(self.time, k, label="Kinetic")
         plt.plot(self.time, p, label="Potential")
         plt.plot(self.time, e, label="Total energy")
@@ -228,9 +312,8 @@ class MolecularDynamics:
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
 
-
 if __name__ == "__main__":
-    obj = MolecularDynamics(numparticles=2, numdimensions=3, T=5, dt=0.01)
-    obj.initialize(position=[[0,0,0],[1.5,0,0]])
-    obj.simulate(potential=obj.lennardJones, integrator=obj.eulerChromer)
-    obj.plot_distance()
+    # EXAMPLE: TWO PARTICLES IN ONE DIMENSION
+    simulator = MolecularDynamics(positions=[[0.0], [1.5]], T=5, dt=0.01)
+    simulator.simulate(potential=obj.lennardJones, integrator=obj.eulerChromer)
+    simulator.plot_distance()
