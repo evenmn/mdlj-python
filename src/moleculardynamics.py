@@ -4,6 +4,33 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 
 class MDSolver:
+    """ Initialize the MDSolver class. This includes defining the
+    time scales, initialize positions and velocities, and define
+    matplotlib fixes.
+    
+    Parameters
+    ----------
+    positions : array_like, list
+        nested list with all coordinates of all
+        particles. Face-centered cube is default.
+    velocity : array_like, list
+        nested list with all velocities of all
+        particles. No velocity is default.
+    cells : int
+        number of unit cells
+    lencell : float
+        length of unit cell
+    numdimensions : int
+        number of dimensions
+    T : float
+        total time
+    dt : float
+        time step
+    size : int
+        label size
+    
+    cells, lencell and numdimensions are only needed by fcc
+    """
     def __init__(self, positions='fcc', 
                        velocity=None, 
                        cells=2, 
@@ -12,33 +39,6 @@ class MDSolver:
                        T=5, 
                        dt=0.01, 
                        size=16):
-        """ Initialize the MolecularDynamics class. This includes defining the
-        time scales, initialize positions and velocities, and define
-        matplotlib fixes.
-        
-        Parameters
-        ----------
-        positions : nested list
-            nested list with all coordinates of all
-            particles. Face-centered cube is default.
-        velocity : nested list
-            nested list with all velocities of all
-            particles. No velocity is default.
-        cells : int
-            number of unit cells
-        lencell : float
-            length of unit cell
-        numdimensions : int
-            number of dimensions
-        T : float
-            total time
-        dt : float
-            time step
-        size :  int
-            label size
-        
-        cells, lencell and numdimensions are only needed by fcc
-        """
         
         # Define time scale and number of steps
         self.T = T
@@ -103,6 +103,11 @@ class MDSolver:
             length of bulk
         dim : int
             number of dimensions
+            
+        Returns
+        -------
+        2darray
+            initial particle configuration
         """
         self.numparticles = (dim+1) * n ** dim
         self.numdimensions = dim
@@ -157,13 +162,11 @@ class MDSolver:
         distancePowTwelveInv : ndarray
             distance between all particles to the power of twelve inverse
         """
-        #print(r)
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
         dr = x - y
-        #del x, y
-        distanceSqrd = np.einsum('ijk,ijk->ij',dr,dr)   # r^2
+        distanceSqrd = np.einsum('ijk,ijk->ij',dr,dr)              # r^2
         distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
-        distancePowTwelveInv = distancePowSixInv**2     # 1/r^12
+        distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
         return dr, distanceSqrd, distancePowSixInv, distancePowTwelveInv
         
     def lennardJones(self, t):
@@ -186,10 +189,8 @@ class MDSolver:
         if self.poteng: 
             self.u[t] = self.lennardJonesEnergy(m - l)
         factor = np.divide(2 * m - l, d)            # (2/r^12 - 1/r^6)/r^2
-        #del m, l, d
         factor[factor == np.inf] = 0
         return - 24 * np.einsum('ij,ijk->jk',factor,dr)
-        #del dr, factor
         
     @staticmethod
     def lennardJonesEnergy(u):
@@ -198,7 +199,6 @@ class MDSolver:
         u.
         
         Parameters
-        ----------
         u : ndarray
             array containing the potential energy of all the particles.
         """
@@ -209,6 +209,11 @@ class MDSolver:
         """ Returns the total kinetic energy for each timestep.
         This function is never called in the integration loop, but can 
         be used to obtain the energy of the system afterwards.
+        
+        Returns
+        -------
+        1darray
+            total kinetic energy at all timesteps
         """
         return (self.v**2).sum(axis=1).sum(axis=1)/2
         
@@ -222,7 +227,7 @@ class MDSolver:
         Parameters
         ----------
         t : int
-            current time step.
+            current timestep
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
@@ -241,7 +246,7 @@ class MDSolver:
         Parameters
         ----------
         t : int
-            current time step.
+            current timestep
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
@@ -259,7 +264,7 @@ class MDSolver:
         Parameters
         ----------
         t : int
-            current time step.
+            current timestep
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
@@ -275,7 +280,7 @@ class MDSolver:
         Parameters
         ----------
         t : int
-            current time step.
+            current timestep
         dumpfile : str
             name and address of dumpfile
         """
