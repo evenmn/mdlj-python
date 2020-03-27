@@ -1,8 +1,9 @@
 from moleculardynamics import MDSolver
+from potential import LennardJones
 
-obj = MDSolver(positions='fcc', cells=6, lenbulk=10, T=5, dt=0.01)
-obj.simulate(potential=obj.lennardJones, 
-             integrator=obj.velocityVerlet,
+solver = MDSolver(positions='fcc', cells=6, lenbulk=10, T=5, dt=0.01)
+solver.simulate(potential=LennardJones(cutoff=3), 
+             integrator=solver.eulerChromer,
              poteng=True,
              dumpfile="../data/864N_3D.data")
-obj.plot_energy()
+solver.plot_energy()

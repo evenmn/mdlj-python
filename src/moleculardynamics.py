@@ -16,6 +16,9 @@ class MDSolver:
     velocity : array_like, list
         nested list with all velocities of all
         particles. No velocity is default.
+    boundaries : str
+        string specifying the boundary conditions to be used in each 
+        direction. o - open, r - reflective, p - periodic
     cells : int
         number of unit cells
     lencell : float
@@ -33,12 +36,13 @@ class MDSolver:
     """
     def __init__(self, positions='fcc', 
                        velocity=None, 
+                       boundaries='ooo',
                        cells=2, 
                        lenbulk=20, 
                        numdimensions=3, 
                        T=5, 
                        dt=0.01, 
-                       size=16):
+                       size=14):
         
         # Define time scale and number of steps
         self.T = T
@@ -54,10 +58,14 @@ class MDSolver:
             self.numdimensions = len(positions[0])
             self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
             self.r[0] = positions
-        elif positions is None:
-            raise TypeError("Initial positions are not defined")
         else:
             raise TypeError("Initial positions needs to be a list of positions")
+            
+        # Set boundaries
+        self.boundaries = {}
+        dimension_labels = 'xyz'
+        for d in range(self.numdimensions):
+            self.boundaries[dimension_labels[d]] = {'lo' : 0, 'hi' : lenbulk, 'type' : boundaries[d]}
         
         self.dumpPositions(0, "../data/initialPositions.data")
         
@@ -78,14 +86,15 @@ class MDSolver:
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
         
+        
     def print_to_terminal(self):
         """ Print information to terminal
         """
         print("\n\n" + 10 * "=", " SYSTEM INFORMATION ", 10 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
-        print("Total time:           ", self.T, " ps")
-        print("Timestep:             ", self.dt, " ps")
+        print("Total time:           ", self.T, "\tps")
+        print("Timestep:             ", self.dt, "\tps")
         print(42 * "=" + "\n\n")
         
         
@@ -138,72 +147,7 @@ class MDSolver:
             raise ValueError("The number of dimensions needs to be in [1,3]")
         self.r[0] *= L/n
         return self.r[0]
-            
-    @staticmethod
-    def calculateDistanceMatrix(r):
-        """ Compute the distance matrix (squared) at timestep t. In the
-        integration loop, we only need the distance squared, which 
-        means that we do not need to take the square-root of the 
-        distance. This save some cpu time.
         
-        Parameters
-        ----------
-        r : ndarray
-            spatial coordinates at some timestep
-            
-        Returns
-        -------
-        dr : ndarray
-            distance vector between all the particles
-        distanceSqrd : ndarray
-            distance between all particles squared
-        distancePowSixInv : ndarray
-            distance between all particles to the power of six inverse
-        distancePowTwelveInv : ndarray
-            distance between all particles to the power of twelve inverse
-        """
-        x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
-        dr = x - y
-        distanceSqrd = np.einsum('ijk,ijk->ij',dr,dr)              # r^2
-        distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
-        distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
-        return dr, distanceSqrd, distancePowSixInv, distancePowTwelveInv
-        
-    def lennardJones(self, t):
-        """ Lennard-Jones inter-atomic force. This is used in the
-        integration loop to calculate the acceleration of particles. 
-        
-        Parameters
-        ----------
-        t : int
-            current time step.
-            
-        Returns
-        -------
-        ndarray
-            The netto force acting on every particle
-        """
-        dr, d, l, m = self.calculateDistanceMatrix(self.r[t])
-        if self.distance: 
-            self.d[t] = d
-        if self.poteng: 
-            self.u[t] = self.lennardJonesEnergy(m - l)
-        factor = np.divide(2 * m - l, d)            # (2/r^12 - 1/r^6)/r^2
-        factor[factor == np.inf] = 0
-        return - 24 * np.einsum('ij,ijk->jk',factor,dr)
-        
-    @staticmethod
-    def lennardJonesEnergy(u):
-        """ Calculates the potential energy at timestep t, based on 
-        the potential energies of all particles stored in the matrix
-        u.
-        
-        Parameters
-        u : ndarray
-            array containing the potential energy of all the particles.
-        """
-        u[u == np.inf] = 0
-        return 2 * np.sum(u)       # Multiply with 4 / 2
         
     def kineticEnergy(self):
         """ Returns the total kinetic energy for each timestep.
@@ -216,6 +160,7 @@ class MDSolver:
             total kinetic energy at all timesteps
         """
         return (self.v**2).sum(axis=1).sum(axis=1)/2
+        
         
     def forwardEuler(self, t, potential):
         """ Forward-Euler numerical integration. This function gets the
@@ -231,10 +176,10 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        # calculate force acting on all the particles
-        a = potential(t)
+        a, u, d = potential(self.r[t])
         self.v[t+1] = self.v[t] + a * self.dt
         self.r[t+1] = self.r[t] + self.v[t] * self.dt
+        return u, d
         
     def eulerChromer(self, t, potential):
         """ Euler-Chromer numerical integration. This function gets the
@@ -250,9 +195,10 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        a = potential(t)
+        a, u, d = potential(self.r[t])
         self.v[t+1] = self.v[t] + a * self.dt
         self.r[t+1] = self.r[t] + self.v[t+1] * self.dt
+        return u, d
         
     def velocityVerlet(self, t, potential):
         """ Velocity-Verlet numerical integration. This function gets the
@@ -268,10 +214,11 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        a = potential(t)
+        a, u, d = potential(self.r[t])
         self.r[t+1] = self.r[t] + self.v[t] * self.dt + 0.5 * a * self.dt**2
-        a_new = potential(t+1)
+        a_new, u, d = potential(self.r[t+1])
         self.v[t+1] = self.v[t] + 0.5 * (a_new + a) * self.dt
+        return u, d
         
     def dumpPositions(self, t, dumpfile):
         """ Dumping positions at timestep t to a dumpfile. We use the xyz-
@@ -308,28 +255,36 @@ class MDSolver:
             filename that all the positions should be dumped to. If not 
             specified, positions are not dumped.  
         """
-        self.cutoff_sqrd = cutoff * cutoff      # Use cutoff^2 and d^2 only
         self.poteng = poteng
         self.distance = distance
+        self.potential = potential
+        
+        a, u, d = potential(self.r[0])
         if distance: 
             self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
+            self.d[0] = d
         if poteng: 
             self.u = np.zeros(self.N+1) # Potential energy
+            self.u[0] = u
         if dumpfile is not None: 
             f=open(dumpfile,'ab')       # Open dumpfile
             self.dumpPositions(0,f)     # Dump initial positions
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            integrator(t, potential)    # integrate to find velocities and positions
+            u, d = integrator(t, potential)    # integrate to find velocities and positions
             if dumpfile is not None: 
                 self.dumpPositions(t+1,f) # dump positions to file
+            if distance:
+                self.d[t] = d
+            if poteng:
+                self.u[t] = u
         if dumpfile is not None: 
             f.close()      # Close dumpfile
         if distance: 
-            self.d[self.N] = self.calculateDistanceMatrix(self.r[-1])[1]    # Calculate final distance 
+            self.d[self.N] = potential.calculateDistanceMatrix(self.r[-1])[1]    # Calculate final distance 
         if poteng:
-            dr, d, l, m = self.calculateDistanceMatrix(self.r[-1])
-            self.u[self.N] = self.lennardJonesEnergy(m - l)
+            dr, d, l, m = potential.calculateDistanceMatrix(self.r[-1])
+            self.u[self.N] = potential.potentialEnergy(m - l)
         
     def plot_distance(self):
         """ Plot distance between all particles. The plot will contain a 
@@ -360,6 +315,8 @@ class MDSolver:
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
+        
+    
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION
