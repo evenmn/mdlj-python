@@ -21,8 +21,8 @@ class MDSolver:
         direction. o - open, r - reflective, p - periodic
     cells : int
         number of unit cells
-    lencell : float
-        length of unit cell
+    lenbox : float
+        length of simulation box. Applies in all dimensions
     numdimensions : int
         number of dimensions
     T : float
@@ -38,11 +38,14 @@ class MDSolver:
                        velocity=None, 
                        boundaries='ooo',
                        cells=2, 
-                       lenbulk=20, 
+                       lenbox=20, 
                        numdimensions=3, 
                        T=5, 
                        dt=0.01, 
                        size=14):
+        
+        self.lenbox = lenbox
+        self.boundaries = boundaries
         
         # Define time scale and number of steps
         self.T = T
@@ -52,20 +55,14 @@ class MDSolver:
         
         # Initialize positions
         if positions=='fcc':
-            self.face_centered_cube(cells, lenbulk, numdimensions)
-        elif type(positions)==list:
+            self.face_centered_cube(cells, lenbox, numdimensions)
+        elif type(positions) == list:
             self.numparticles = len(positions)
             self.numdimensions = len(positions[0])
             self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
             self.r[0] = positions
         else:
             raise TypeError("Initial positions needs to be a list of positions")
-            
-        # Set boundaries
-        self.boundaries = {}
-        dimension_labels = 'xyz'
-        for d in range(self.numdimensions):
-            self.boundaries[dimension_labels[d]] = {'lo' : 0, 'hi' : lenbulk, 'type' : boundaries[d]}
         
         self.dumpPositions(0, "../data/initialPositions.data")
         
@@ -98,7 +95,7 @@ class MDSolver:
         print(42 * "=" + "\n\n")
         
         
-    def face_centered_cube(self, n, L, dim):
+    def face_centered_cube(self, cells, lenbox, dim):
         """ Creating a face-centered cube of n^dim unit cells with
         4 particles in each unit cell. The number of particles
         then becomes (dim+1) * n ^ dim. Each unit cell has a 
@@ -106,10 +103,10 @@ class MDSolver:
         
         Parameters
         ----------
-        n : int
+        cells : int
             number of unit cells in each dimension
-        L : float
-            length of bulk
+        lenbox : float
+            length of box
         dim : int
             number of dimensions
             
@@ -118,26 +115,26 @@ class MDSolver:
         2darray
             initial particle configuration
         """
-        self.numparticles = (dim+1) * n ** dim
+        self.numparticles = (dim+1) * cells ** dim
         self.numdimensions = dim
         self.r = np.zeros((self.N+1, self.numparticles, dim))
         counter = 0
         if dim==1:
-            for i in range(n):
+            for i in range(cells):
                 self.r[0,counter+0] = [i]
                 self.r[0,counter+1] = [0.5+i]
                 counter +=2
         elif dim==2:
-            for i in range(n):
-                for j in range(n):
+            for i in range(cells):
+                for j in range(cells):
                     self.r[0,counter+0] = [i, j]
                     self.r[0,counter+1] = [i, 0.5+j]
                     self.r[0,counter+2] = [0.5+i, j]
                     counter += 3
         elif dim==3:
-            for i in range(n):
-                for j in range(n):
-                    for k in range(n):
+            for i in range(cells):
+                for j in range(cells):
+                    for k in range(cells):
                         self.r[0,counter+0] = [i, j, k]
                         self.r[0,counter+1] = [i, 0.5+j, 0.5+k]
                         self.r[0,counter+2] = [0.5+i, j, 0.5+k]
@@ -145,7 +142,8 @@ class MDSolver:
                         counter += 4
         else:
             raise ValueError("The number of dimensions needs to be in [1,3]")
-        self.r[0] *= L/n
+        # Scale initial positions correctly
+        self.r[0] *= lenbox/cells
         return self.r[0]
         
         
@@ -162,63 +160,6 @@ class MDSolver:
         return (self.v**2).sum(axis=1).sum(axis=1)/2
         
         
-    def forwardEuler(self, r, v, a):
-        """ Forward-Euler numerical integration. This function gets the
-        acceleration from a potential function. In our case, this
-        potential is Lennard-Jones. Based on the acceleration, it
-        finds the velocity at the current timestep t using the 
-        Forward-Euler integration scheme. 
-        
-        Parameters
-        ----------
-        t : int
-            current timestep
-        potential : def
-            inter-atomic potential (Lennard-Jones)
-        """
-        r += v * self.dt
-        v += a * self.dt
-        a, u, d = self.potential(r)
-        return r, v, a, u, d
-        
-    def eulerChromer(self, r, v, a):
-        """ Euler-Chromer numerical integration. This function gets the
-        acceleration from a potential function. In our case, this
-        potential is Lennard-Jones. Based on the acceleration, it
-        finds the velocity at the current timestep t using the 
-        Euler-Chromer integration scheme. 
-        
-        Parameters
-        ----------
-        t : int
-            current timestep
-        potential : def
-            inter-atomic potential (Lennard-Jones)
-        """
-        v += a * self.dt
-        r += v * self.dt
-        a, u, d = self.potential(r)
-        return r, v, a, u, d
-        
-    def velocityVerlet(self, r, v, a):
-        """ Velocity-Verlet numerical integration. This function gets the
-        acceleration from a potential function. In our case, this
-        potential is Lennard-Jones. Based on the acceleration, it
-        finds the velocity at the current timestep t using the 
-        Velocity-Verlet integration scheme. 
-        
-        Parameters
-        ----------
-        t : int
-            current timestep
-        potential : def
-            inter-atomic potential (Lennard-Jones)
-        """
-        r += v * self.dt + 0.5 * a * self.dt**2
-        a_new, u, d = self.potential(r)
-        v += 0.5 * (a_new + a) * self.dt
-        return r, v, a_new, u, d
-        
     def dumpPositions(self, t, dumpfile):
         """ Dumping positions at timestep t to a dumpfile. We use the xyz-
         format, which can easily be visualized using Ovito.
@@ -232,8 +173,30 @@ class MDSolver:
         """
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
         np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
+        
+    def boundary(self, r, v):
+        # Set boundaries
+        for d in range(self.numdimensions):
+            lo, hi = 0, self.lenbox
+            if self.boundaries[d] == 'o':
+                pass
+            elif self.boundaries[d] == 'r':
+                r_d = r[:,d]
+                r_d = np.where(r_d>hi, 2*hi - r_d, r_d)
+                r_d = np.where(r_d<lo, 2*lo - r_d, r_d)
+                r[:,d] = r_d
+                v_d = v[:,d]
+                v_d = np.where(r_d>hi, -v_d, v_d)
+                v_d = np.where(r_d<lo, -v_d, v_d)
+                v[:,d] = v_d
+            elif self.boundaries[d] == 'p':
+                r_d = r[:,d]
+                r_d = np.where(r_d>hi, r_d - hi + lo, r_d)
+                r_d = np.where(r_d<lo, r_d + hi + lo, r_d)
+                r[:,d] = r_d
+        return r, v
     
-    def simulate(self, potential, integrator, poteng=False, distance=False, dumpfile=None):
+    def simulate(self, potential, integrator, poteng=True, distance=False, dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
@@ -248,14 +211,10 @@ class MDSolver:
             energy should be calculated and stored.
         distance : bool or int
             boolean saying whether or not the distance matrix should be stored. 
-        cutoff : float
-            cutoff distance
         dumpfile : str
             filename that all the positions should be dumped to. If not 
-            specified, positions are not dumped.  
+            specified, positions are not dumped.
         """
-        self.poteng = poteng
-        self.distance = distance
         self.potential = potential
         
         a, u, d = potential(self.r[0])
@@ -266,12 +225,13 @@ class MDSolver:
             self.u = np.zeros(self.N+1) # Potential energy
             self.u[0] = u
         if dumpfile is not None: 
-            f=open(dumpfile,'ab')       # Open dumpfile
+            f = open(dumpfile,'ab')       # Open dumpfile
             self.dumpPositions(0,f)     # Dump initial positions
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
             # integrate to find velocities and positions
-            self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
+            r, v, a, u, d = integrator(self.r[t], self.v[t], a)
+            self.r[t+1], self.v[t+1] = self.boundary(r, v)
             if dumpfile is not None: 
                 self.dumpPositions(t+1,f) # dump positions to file
             if distance:
@@ -318,11 +278,14 @@ class MDSolver:
             
 
 if __name__ == "__main__":
-    # EXAMPLE: TWO PARTICLES IN ONE DIMENSION
-    obj = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
-    obj.simulate(potential=obj.lennardJones, 
-                 integrator=obj.eulerChromer,
-                 distance=True,
-                 poteng=True)
-    obj.plot_distance()
-    obj.plot_energy()
+    # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
+    from potential import LennardJones
+    from integrator import VelocityVerlet
+
+    solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
+    solver.simulate(potential=LennardJones(cutoff=3), 
+                    integrator=VelocityVerlet(solver),
+                    distance=True,
+                    dumpfile="../data/2N_1D_1.5S.data")
+    solver.plot_distance()
+    solver.plot_energy()

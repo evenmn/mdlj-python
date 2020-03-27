@@ -1,8 +1,14 @@
 import numpy as np
-from moleculardynamics import MDSolver
+class Potential:
+    def __init__(self):
+        pass
+        
+    def __call__(self, r):
+        raise NotImplementedError ("Class {} has no instance '__call__'."
+                                   .format(self.__class__.__name__))
 
-class LennardJones(MDSolver):
-    def __init__(self, cutoff):
+class LennardJones(Potential):
+    def __init__(self, cutoff=3.0):
         self.cutoffSqrd = cutoff * cutoff
         
     @staticmethod
