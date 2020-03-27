@@ -1,6 +1,6 @@
-from objectoriented import MolecularDynamics
+from moleculardynamics import MDSolver
 
-obj = MolecularDynamics(positions='fcc', cells=6, lenbulk=10, T=5, dt=0.001)
+obj = MDSolver(positions='fcc', cells=6, lenbulk=10, T=5, dt=0.01)
 obj.simulate(potential=obj.lennardJones, 
              integrator=obj.velocityVerlet,
              poteng=True,

@@ -1,6 +1,7 @@
-from objectoriented import MolecularDynamics
+from moleculardynamics import MDSolver
 
-obj = MolecularDynamics(positions=[[0.0], [1.5]], T=5, dt=0.01)
+# Simulate two particles in one dimension separated by a distance 1.5 sigma
+obj = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
 obj.simulate(potential=obj.lennardJones, 
              integrator=obj.eulerChromer, 
              distance=True,
@@ -9,7 +10,8 @@ obj.simulate(potential=obj.lennardJones,
 obj.plot_distance()
 obj.plot_energy()
 
-obj = MolecularDynamics(positions=[[0.0], [0.95]], T=5, dt=0.01)
+# Simulate two particles in one dimension separated by a distance 0.95 sigma
+obj = MDSolver(positions=[[0.0], [0.95]], T=5, dt=0.01)
 obj.simulate(potential=obj.lennardJones, 
              integrator=obj.eulerChromer, 
              distance=True,
