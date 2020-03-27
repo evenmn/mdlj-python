@@ -4,7 +4,7 @@ from potential import LennardJones
 # Simulate two particles in one dimension separated by a distance 1.5 sigma
 solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
 solver.simulate(potential=LennardJones(cutoff=3), 
-                integrator=solver.eulerChromer, 
+                integrator=solver.velocityVerlet, 
                 distance=True,
                 poteng=True,
                 dumpfile="../data/2N_1D_1.5S.data")

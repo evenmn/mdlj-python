@@ -162,7 +162,7 @@ class MDSolver:
         return (self.v**2).sum(axis=1).sum(axis=1)/2
         
         
-    def forwardEuler(self, t, potential):
+    def forwardEuler(self, r, v, a):
         """ Forward-Euler numerical integration. This function gets the
         acceleration from a potential function. In our case, this
         potential is Lennard-Jones. Based on the acceleration, it
@@ -176,12 +176,12 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        a, u, d = potential(self.r[t])
-        self.v[t+1] = self.v[t] + a * self.dt
-        self.r[t+1] = self.r[t] + self.v[t] * self.dt
-        return u, d
+        r += v * self.dt
+        v += a * self.dt
+        a, u, d = self.potential(r)
+        return r, v, a, u, d
         
-    def eulerChromer(self, t, potential):
+    def eulerChromer(self, r, v, a):
         """ Euler-Chromer numerical integration. This function gets the
         acceleration from a potential function. In our case, this
         potential is Lennard-Jones. Based on the acceleration, it
@@ -195,12 +195,12 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        a, u, d = potential(self.r[t])
-        self.v[t+1] = self.v[t] + a * self.dt
-        self.r[t+1] = self.r[t] + self.v[t+1] * self.dt
-        return u, d
+        v += a * self.dt
+        r += v * self.dt
+        a, u, d = self.potential(r)
+        return r, v, a, u, d
         
-    def velocityVerlet(self, t, potential):
+    def velocityVerlet(self, r, v, a):
         """ Velocity-Verlet numerical integration. This function gets the
         acceleration from a potential function. In our case, this
         potential is Lennard-Jones. Based on the acceleration, it
@@ -214,11 +214,10 @@ class MDSolver:
         potential : def
             inter-atomic potential (Lennard-Jones)
         """
-        a, u, d = potential(self.r[t])
-        self.r[t+1] = self.r[t] + self.v[t] * self.dt + 0.5 * a * self.dt**2
-        a_new, u, d = potential(self.r[t+1])
-        self.v[t+1] = self.v[t] + 0.5 * (a_new + a) * self.dt
-        return u, d
+        r += v * self.dt + 0.5 * a * self.dt**2
+        a_new, u, d = self.potential(r)
+        v += 0.5 * (a_new + a) * self.dt
+        return r, v, a_new, u, d
         
     def dumpPositions(self, t, dumpfile):
         """ Dumping positions at timestep t to a dumpfile. We use the xyz-
@@ -234,7 +233,7 @@ class MDSolver:
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
         np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
     
-    def simulate(self, potential, integrator, poteng=False, distance=False, cutoff=3.0, dumpfile=None):
+    def simulate(self, potential, integrator, poteng=False, distance=False, dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
@@ -271,7 +270,8 @@ class MDSolver:
             self.dumpPositions(0,f)     # Dump initial positions
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            u, d = integrator(t, potential)    # integrate to find velocities and positions
+            # integrate to find velocities and positions
+            self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
             if dumpfile is not None: 
                 self.dumpPositions(t+1,f) # dump positions to file
             if distance:
@@ -315,8 +315,7 @@ class MDSolver:
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
-        
-    
+            
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION
