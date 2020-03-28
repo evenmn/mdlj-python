@@ -72,6 +72,7 @@ class MDSolver:
         elif velocity=="gauss":
             self.v = np.random.normal(0, 1, size=(self.N+1, self.numparticles, self.numdimensions))
         elif type(velocity) == list:
+            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
             self.v[0] = velocity
         
         # print to terminal
@@ -173,28 +174,6 @@ class MDSolver:
         """
         dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
         np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
-        
-    def boundary(self, r, v):
-        # Set boundaries
-        for d in range(self.numdimensions):
-            lo, hi = 0, self.lenbox
-            if self.boundaries[d] == 'o':
-                pass
-            elif self.boundaries[d] == 'r':
-                r_d = r[:,d]
-                r_d = np.where(r_d>hi, 2*hi - r_d, r_d)
-                r_d = np.where(r_d<lo, 2*lo - r_d, r_d)
-                r[:,d] = r_d
-                v_d = v[:,d]
-                v_d = np.where(r_d>hi, -v_d, v_d)
-                v_d = np.where(r_d<lo, -v_d, v_d)
-                v[:,d] = v_d
-            elif self.boundaries[d] == 'p':
-                r_d = r[:,d]
-                r_d = np.where(r_d>hi, r_d - hi + lo, r_d)
-                r_d = np.where(r_d<lo, r_d + hi + lo, r_d)
-                r[:,d] = r_d
-        return r, v
     
     def simulate(self, potential, integrator, poteng=True, distance=False, dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
@@ -225,13 +204,13 @@ class MDSolver:
             self.u = np.zeros(self.N+1) # Potential energy
             self.u[0] = u
         if dumpfile is not None: 
-            f = open(dumpfile,'ab')       # Open dumpfile
+            f = open(dumpfile,'w')       # Open dumpfile
             self.dumpPositions(0,f)     # Dump initial positions
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
             # integrate to find velocities and positions
-            r, v, a, u, d = integrator(self.r[t], self.v[t], a)
-            self.r[t+1], self.v[t+1] = self.boundary(r, v)
+            self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
+            #self.r[t+1], self.v[t+1] = self.boundary(r, v)
             if dumpfile is not None: 
                 self.dumpPositions(t+1,f) # dump positions to file
             if distance:
@@ -280,11 +259,11 @@ class MDSolver:
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
     from potential import LennardJones
-    from integrator import VelocityVerlet
+    from integrator import VelocityVerlet, EulerChromer
 
     solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
     solver.simulate(potential=LennardJones(cutoff=3), 
-                    integrator=VelocityVerlet(solver),
+                    integrator=EulerChromer(solver),
                     distance=True,
                     dumpfile="../data/2N_1D_1.5S.data")
     solver.plot_distance()

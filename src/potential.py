@@ -6,13 +6,18 @@ class Potential:
     def __call__(self, r):
         raise NotImplementedError ("Class {} has no instance '__call__'."
                                    .format(self.__class__.__name__))
+                     
+    @staticmethod              
+    def potentialEnergy(u):
+        raise NotImplementedError ("Class {} has no instance 'potentialEnergy'."
+                                   .format(self.__class__.__name__))
 
 class LennardJones(Potential):
     def __init__(self, cutoff=3.0):
         self.cutoffSqrd = cutoff * cutoff
         
     @staticmethod
-    def calculateDistanceMatrix(r):
+    def calculateDistanceMatrix(r, ignore_last=0):
         """ Compute the distance matrix (squared) at timestep t. In the
         integration loop, we only need the distance squared, which 
         means that we do not need to take the square-root of the 
@@ -37,6 +42,7 @@ class LennardJones(Potential):
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
         dr = x - y
         distanceSqrd = np.einsum('ijk,ijk->ij',dr,dr)              # r^2
+        distanceSqrd = distanceSqrd[:len(distanceSqrd)-ignore_last]
         distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
         distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
         return dr, distanceSqrd, distancePowSixInv, distancePowTwelveInv
@@ -51,10 +57,11 @@ class LennardJones(Potential):
         u : ndarray
             array containing the potential energy of all the particles.
         """
+        # TODO: Shift potential
         u[u == np.inf] = 0
         return 2 * np.sum(u)       # Multiply with 4 / 2
         
-    def __call__(self, r):
+    def __call__(self, r, ignore_last=0):
         """ Lennard-Jones inter-atomic force. This is used in the
         integration loop to calculate the acceleration of particles. 
         
@@ -68,11 +75,12 @@ class LennardJones(Potential):
         ndarray
             The netto force acting on every particle
         """
-        dr, d, l, m = self.calculateDistanceMatrix(r)
+        dr, d, l, m = self.calculateDistanceMatrix(r, ignore_last)
         l = np.where(d>self.cutoffSqrd, 0, l)
         m = np.where(d>self.cutoffSqrd, 0, m)
-        u = self.potentialEnergy(m - l)
+        #factor = np.where(d>self.cutoffSqrd, 0, np.divide(2 * m - l, d))
         factor = np.divide(2 * m - l, d)            # (2/r^12 - 1/r^6)/r^2
         factor[factor == np.inf] = 0
         force = - 24 * np.einsum('ij,ijk->jk',factor,dr)
+        u = self.potentialEnergy(m - l)
         return force, u, d
