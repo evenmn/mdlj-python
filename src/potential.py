@@ -67,7 +67,7 @@ class LennardJones(Potential):
         """
         # TODO: Shift potential
         u[u == np.inf] = 0
-        return 2 * np.sum(u)       # Multiply with 4 / 2
+        return 4 * np.sum(u)
         
     def __call__(self, r):
         """ Lennard-Jones inter-atomic force. This is used in the
