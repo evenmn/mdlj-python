@@ -198,10 +198,10 @@ class MDSolver:
         
         a, u, d = potential(self.r[0])
         if distance: 
-            self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
+            self.d = np.zeros((self.N, self.numparticles, self.numparticles))
             self.d[0] = d
         if poteng: 
-            self.u = np.zeros(self.N+1) # Potential energy
+            self.u = np.zeros(self.N) # Potential energy
             self.u[0] = u
         if dumpfile is not None: 
             f = open(dumpfile,'w')       # Open dumpfile
@@ -219,11 +219,6 @@ class MDSolver:
                 self.u[t] = u
         if dumpfile is not None: 
             f.close()      # Close dumpfile
-        if distance: 
-            self.d[self.N] = potential.calculateDistanceMatrix(self.r[-1])[1]    # Calculate final distance 
-        if poteng:
-            dr, d, l, m = potential.calculateDistanceMatrix(self.r[-1])
-            self.u[self.N] = potential.potentialEnergy(m - l)
         
     def plot_distance(self):
         """ Plot distance between all particles. The plot will contain a 
@@ -233,7 +228,7 @@ class MDSolver:
         distance = np.sqrt(self.d)
         for i in range(self.numparticles):
             for j in range(i):
-                plt.plot(self.time, distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
+                plt.plot(self.time[:-1], distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=self.size)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel("$r_{ij}$", **self.label_size)
@@ -245,11 +240,12 @@ class MDSolver:
         while the potential energy is taken from the specified potential
         (which in our case is Lennard-Jones).
         """
-        k = self.kineticEnergy()        # Kinetic energy
+        time = self.time[:-1]
+        k = self.kineticEnergy()[:-1]   # Kinetic energy
         e = k + self.u                  # Total energy
-        plt.plot(self.time, k, label="Kinetic")
-        plt.plot(self.time, self.u, label="Potential")
-        plt.plot(self.time, e, label="Total energy")
+        plt.plot(time, k, label="Kinetic")
+        plt.plot(time, self.u, label="Potential")
+        plt.plot(time, e, label="Total energy")
         plt.legend(loc="best", fontsize=self.size)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
