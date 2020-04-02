@@ -50,10 +50,7 @@ class LennardJones(Potential):
         indices = np.nonzero(distanceSqrdHalf<self.cutoffSqrd)
         distanceSqrd = distanceSqrdHalf[indices]      # Ignoring the particles separated
         dr = drHalf[indices]                          # by a distance > cutoff
-        a = np.arange(par*par).reshape(par,par)
-        b = a[upperTri]
-        c = b[indices]
-        return distanceSqrdAll, distanceSqrd, dr, c
+        return distanceSqrdAll, distanceSqrd, dr, indices
         
     @staticmethod
     def potentialEnergy(u):
@@ -89,17 +86,19 @@ class LennardJones(Potential):
         distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
         factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceSqrd)            # (2/r^12 - 1/r^6)/r^2
         factor[factor == np.inf] = 0
-        #print(factor)
-        #print(dr)
         force = - 24 * np.einsum('i,ij->ij',factor,dr)
-        #print(force)
-        #print(indices)
         force2 = np.zeros((par*par,dim))
-        force2[indices] = -force
-        force2[::-1][indices] = force
+        upperTri = np.triu_indices(par, 1)
+        a = np.arange(par*par).reshape(par,par)
+        b = a[upperTri]
+        c = b[indices]
+        d = a.T
+        e = d[upperTri]
+        f = e[indices]
+        
+        force2[c] = -force
+        force2[f] = force
         force2 = force2.reshape(par,par,dim)
         force3 = np.sum(force2, axis=1)
-        #print(force3)
-        #print("")
         u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv)
         return force3, u, distanceSqrdAll
