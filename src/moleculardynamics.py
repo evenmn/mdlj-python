@@ -53,7 +53,7 @@ class MDSolver:
         self.T = T
         self.dt = dt
         self.N = int(T/dt)
-        self.time = np.linspace(0, T, self.N+1)
+        self.time = np.linspace(0, T, self.N)
         
         # Initialize positions
         r0 = positions()
@@ -189,7 +189,7 @@ class MDSolver:
         distance = np.sqrt(self.d)
         for i in range(self.numparticles):
             for j in range(i):
-                plt.plot(self.time[:-1], distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
+                plt.plot(self.time, distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel("$r_{ij}$", **self.label_size)
@@ -201,17 +201,26 @@ class MDSolver:
         while the potential energy is taken from the specified potential
         (which in our case is Lennard-Jones).
         """
-        time = self.time[:-1]
         k = self.kineticEnergy()[:-1]   # Kinetic energy
         e = k + self.u                  # Total energy
-        plt.plot(time, k, label="Kinetic")
-        plt.plot(time, self.u, label="Potential")
-        plt.plot(time, e, label="Total energy")
+        plt.plot(self.time, k, label="Kinetic")
+        plt.plot(self.time, self.u, label="Potential")
+        plt.plot(self.time, e, label="Total energy")
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
-            
+        
+    def plot_temperature(self):
+        """ Plot the temperature as a function of time. The temperature
+        is calculated using the formula T=v^2/ND.
+        """
+        k = self.kineticEnergy()[:-1]
+        T = k * 2 * 119.7 / (self.numparticles * self.numdimensions)
+        plt.plot(self.time, T)
+        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
+        plt.ylabel(r"Temperature [K]", **self.label_size)
+        plt.show()
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
