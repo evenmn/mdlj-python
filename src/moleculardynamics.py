@@ -10,44 +10,31 @@ class MDSolver:
     
     Parameters
     ----------
-    positions : array_like, list
-        nested list with all coordinates of all
-        particles. Face-centered cube is default.
-    velocity : array_like, list
-        nested list with all velocities of all
-        particles. No velocity is default.
-    boundaries : str
-        string specifying the boundary conditions to be used in each 
-        direction. o - open, r - reflective, p - periodic
-    cells : int
-        number of unit cells
-    lenbox : float
-        length of simulation box. Applies in all dimensions
-    numdimensions : int
-        number of dimensions
+    positions : obj
+        class object defined by initpositions.py. Face-centered cube
+        with length 3 and 4 particles as default.
+    velocity : obj
+        class object defined by initvelocities.py. No velocity as default.
+    boundaries : obj
+        class object defined by boundaryconditions.py. Open boundaries 
+        as default.
     T : float
         total time
     dt : float
         time step
-    size : int
-        label size
-    
-    cells, lencell and numdimensions are only needed by fcc
     """
     
     from initpositions import FCC
     from initvelocities import Zero
-    def __init__(self, positions=FCC(cells=1, lenbox=3, dim=3), 
-                       velocity=Zero(), 
-                       boundary='o',
-                       lenbox=20,
-                       cutoff=3,
+    from boundaryconditions import Open
+    
+    def __init__(self, positions=FCC(cells=1, lenbulk=3), 
+                       velocities=Zero(), 
+                       boundaries=Open(),
                        T=5, 
                        dt=0.01):
         
-        self.lenbox = lenbox
-        self.boundary = boundary
-        self.cutoff = cutoff
+        self.boundaries = boundaries
         
         # Define time scale and number of steps
         self.T = T
@@ -65,7 +52,7 @@ class MDSolver:
         
         # Initialize velocities
         self.v = np.zeros(self.r.shape)
-        self.v[0] = velocity(self.numparticles, self.numdimensions)
+        self.v[0] = velocities(self.numparticles, self.numdimensions)
         
         # print to terminal
         self.print_to_terminal()
@@ -81,25 +68,28 @@ class MDSolver:
         print("\n\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
-        print("Cutoff distance:      ", self.cutoff)
-        print("Boundary conditions:  ", self.boundary)
-        print("Length of box:        ", self.lenbox)
+        print("Boundary conditions:  ", self.boundaries)
         print("Total time:           ", self.T, "\tps")
         print("Timestep:             ", self.dt, "\tps")
         print(50 * "=" + "\n\n")
         
-        
-    def kineticEnergy(self):
+    @staticmethod
+    def kineticEnergy(v):
         """ Returns the total kinetic energy for each timestep.
         This function is never called in the integration loop, but can 
         be used to obtain the energy of the system afterwards.
+        
+        Parameters
+        ----------
+        v : ndarray
+            velocity array
         
         Returns
         -------
         1darray
             total kinetic energy at all timesteps
         """
-        return (self.v**2).sum(axis=1).sum(axis=1)/2
+        return (v**2).sum(axis=1).sum(axis=1)/2
         
     @staticmethod
     def dumpPositions(r, dumpfile):
@@ -108,8 +98,8 @@ class MDSolver:
         
         Parameters
         ----------
-        t : int
-            current timestep
+        r : ndarray
+            position array
         dumpfile : str
             name and address of dumpfile
         """
@@ -121,6 +111,21 @@ class MDSolver:
     @staticmethod    
     def print_simulation(potential, integrator, poteng, distance, dumpfile):
         """ Print information to terminal when starting a simulation
+        
+        Parameters
+        ----------
+        potential : obj
+            object defining the inter-atomic potential
+        integrator : obj
+            object defining the integrator
+        poteng : bool or int
+            boolean saying whether or not the potential
+            energy should be calculated and stored.
+        distance : bool or int
+            boolean saying whether or not the distance matrix should be stored. 
+        dumpfile : str
+            filename that all the positions should be dumped to. If not 
+            specified, positions are not dumped.
         """
         print("\n\n" + 12 * "=", " SIMULATION INFORMATION ", 12 * "=")
         print("Potential:            ", potential)
@@ -140,10 +145,10 @@ class MDSolver:
         
         Parameters
         ----------
-        potential : def
-            function defining the inter-atomic potential
-        integrator : def
-            function defining the integrator
+        potential : obj
+            object defining the inter-atomic potential
+        integrator : obj
+            object defining the integrator
         poteng : bool or int
             boolean saying whether or not the potential
             energy should be calculated and stored.
@@ -154,32 +159,48 @@ class MDSolver:
             specified, positions are not dumped.
         """
         self.potential = potential
-        self.integrator = integrator
         
         # Print information
         self.print_simulation(potential, integrator, poteng, distance, dumpfile)
         
+        # Compute initial acceleration, potential energy and distance matrix
         a, u, d = potential(self.r[0])
-        if distance: 
-            self.d = np.zeros((self.N, self.numparticles, self.numparticles))
-            self.d[0] = d
-        if poteng: 
-            self.u = np.zeros(self.N) # Potential energy
-            self.u[0] = u
+        
+        # Dump positions to dumpfile if dumpfile is defined
         if dumpfile is not None: 
             f = open(dumpfile,'w')       # Open dumpfile
             self.dumpPositions(self.r[0],f)     # Dump initial positions
+        
+        # Store distance matrix if distance=True
+        if distance: 
+            self.d = np.zeros((self.N, self.numparticles, self.numparticles))
+            self.d[0] = d
+            
+        # Store potential energy if poteng=True
+        if poteng: 
+            self.u = np.zeros(self.N) # Potential energy
+            self.u[0] = u
+            
+        # Integration loop
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
             self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
+            
+            # Dump positions to dumpfile if dumpfile is defined
             if dumpfile is not None: 
                 self.dumpPositions(self.r[t+1],f) # dump positions to file
+                
+            # Store distance matrix if distance=True
             if distance:
                 self.d[t] = d
+                
+            # Store potential energy if poteng=True
             if poteng:
                 self.u[t] = u
+                
+        # Close dumpfile
         if dumpfile is not None: 
-            f.close()      # Close dumpfile
+            f.close()
         
     def plot_distance(self):
         """ Plot distance between all particles. The plot will contain a 
@@ -201,7 +222,7 @@ class MDSolver:
         while the potential energy is taken from the specified potential
         (which in our case is Lennard-Jones).
         """
-        k = self.kineticEnergy()[:-1]   # Kinetic energy
+        k = self.kineticEnergy(self.v)[:-1]   # Kinetic energy
         e = k + self.u                  # Total energy
         plt.plot(self.time, k, label="Kinetic")
         plt.plot(self.time, self.u, label="Potential")
@@ -215,7 +236,7 @@ class MDSolver:
         """ Plot the temperature as a function of time. The temperature
         is calculated using the formula T=v^2/ND.
         """
-        k = self.kineticEnergy()[:-1]
+        k = self.kineticEnergy(self.v)[:-1]
         T = k * 2 * 119.7 / (self.numparticles * self.numdimensions)
         plt.plot(self.time, T)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
@@ -225,10 +246,13 @@ class MDSolver:
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
     from potential import LennardJones
-    from integrator import VelocityVerlet, EulerChromer
+    from integrator import EulerChromer
+    from initpositions import setPositions
 
-    solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
-    solver(potential=LennardJones(solver), 
+    solver = MDSolver(positions=setPositions([[0.0], [1.5]]), 
+                      T=5, 
+                      dt=0.01)
+    solver(potential=LennardJones(solver, cutoff=2.5), 
            integrator=EulerChromer(solver),
            distance=True,
            dumpfile="../data/2N_1D_1.5S.data")

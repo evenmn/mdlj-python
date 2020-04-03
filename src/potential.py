@@ -1,5 +1,8 @@
 import numpy as np
 class Potential:
+    """ Potential class. Find the force acting on the particles
+    given a potential.
+    """
     def __init__(self):
         pass
         
@@ -8,27 +11,38 @@ class Potential:
                                    .format(self.__class__.__name__))
                      
     @staticmethod              
-    def potentialEnergy(u):
+    def potentialEnergy(u, cutoff):
         raise NotImplementedError ("Class {} has no instance 'potentialEnergy'."
                                    .format(self.__class__.__name__))
 
 class LennardJones(Potential):
-    def __init__(self, solver):
-        self.cutoff = solver.cutoff
-        self.lenbox = solver.lenbox
-        self.boundary = solver.boundary
+    """ The Lennard-Jones potential. Taking the form
+        U(r) = 4ε((σ/r)^12 - (σ/r)^6)
+    
+    Parameters
+    ----------
+    solver : obj
+        class object defined by moleculardynamics.py. Takes the MDSolver 
+        class as argument
+    cutoff : float
+        cutoff distance: maximum length of the interactions. 3 by default.
+    """
+    def __init__(self, solver, cutoff=3):
+        self.cutoff = cutoff
+        self.boundaries = solver.boundaries
         
     def __repr__(self):
         """ Representing the potential.
         """
         return "Lennard-Jones potential"
         
-    #@staticmethod
     def calculateDistanceMatrix(self, r):
         """ Compute the distance matrix (squared) at timestep t. In the
         integration loop, we only need the distance squared, which 
         means that we do not need to take the square-root of the 
-        distance. This save some cpu time.
+        distance. We also exploit Newton's third law and calculate the
+        needed forces just once. Additionally, we only care about the
+        particles within a distance specified by the cutoff distance.
         
         Parameters
         ----------
@@ -50,8 +64,7 @@ class LennardJones(Potential):
         half = par*par // 2
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
         drAll = x - y
-        if self.boundary == 'p':
-            drAll -= np.round(drAll/self.lenbox)* self.lenbox
+        drAll = self.boundaries.checkDistance(drAll)
         distanceSqrdAll = np.einsum('ijk,ijk->ij',drAll,drAll)        # r^2
         upperTri = np.triu_indices(par, 1)
         distanceSqrdHalf = distanceSqrdAll[upperTri]
@@ -63,13 +76,21 @@ class LennardJones(Potential):
         
     @staticmethod
     def potentialEnergy(u, cutoff):
-        """ Calculates the potential energy at timestep t, based on 
+        """ Calculates the total potential energy, based on 
         the potential energies of all particles stored in the matrix
-        u.
+        u. Shifts the potential according to the cutoff.
         
         Parameters
+        ----------
         u : ndarray
             array containing the potential energy of all the particles.
+        cutoff : float
+            cutoff distance: maximum length of the interactions. 3 by default.
+            
+        Returns
+        -------
+        float
+            total potential energy
         """
         u[u == np.inf] = 0
         return 4 * (np.sum(u) - cutoff**(-12) - cutoff**(-6))
@@ -80,13 +101,17 @@ class LennardJones(Potential):
         
         Parameters
         ----------
-        t : int
-            current time step.
+        r : ndarray
+            spatial coordinates at some timestep
             
         Returns
         -------
         ndarray
-            The netto force acting on every particle
+            the netto force acting on every particle
+        float
+            total potential energy
+        ndarray
+            current distance matrix
         """
         par, dim = r.shape
         
