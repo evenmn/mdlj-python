@@ -36,16 +36,18 @@ class MDSolver:
     """
     def __init__(self, positions='fcc', 
                        velocity=None, 
-                       boundaries='ooo',
+                       boundary='o',
                        cells=2, 
                        lenbox=20, 
                        numdimensions=3, 
+                       cutoff=3,
                        T=5, 
                        dt=0.01, 
                        size=14):
         
         self.lenbox = lenbox
-        self.boundaries = boundaries
+        self.boundary = boundary
+        self.cutoff = cutoff
         
         # Define time scale and number of steps
         self.T = T
@@ -64,7 +66,7 @@ class MDSolver:
         else:
             raise TypeError("Initial positions needs to be a list of positions")
         
-        self.dumpPositions(0, "../data/initialPositions.data")
+        self.dumpPositions(self.r[0], "../data/initialPositions.data")
         
         # Initialize velocities
         if velocity==None:
@@ -84,17 +86,18 @@ class MDSolver:
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
         
-        
     def print_to_terminal(self):
         """ Print information to terminal
         """
-        print("\n\n" + 10 * "=", " SYSTEM INFORMATION ", 10 * "=")
+        print("\n\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
+        print("Cutoff distance:      ", self.cutoff)
+        print("Boundary conditions:  ", self.boundary)
+        print("Length of box:        ", self.lenbox)
         print("Total time:           ", self.T, "\tps")
         print("Timestep:             ", self.dt, "\tps")
-        print(42 * "=" + "\n\n")
-        
+        print(50 * "=" + "\n\n")
         
     def face_centered_cube(self, cells, lenbox, dim):
         """ Creating a face-centered cube of n^dim unit cells with
@@ -160,8 +163,8 @@ class MDSolver:
         """
         return (self.v**2).sum(axis=1).sum(axis=1)/2
         
-        
-    def dumpPositions(self, t, dumpfile):
+    @staticmethod
+    def dumpPositions(r, dumpfile):
         """ Dumping positions at timestep t to a dumpfile. We use the xyz-
         format, which can easily be visualized using Ovito.
         
@@ -172,10 +175,28 @@ class MDSolver:
         dumpfile : str
             name and address of dumpfile
         """
-        dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
-        np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
+        numparticles = len(r)
+        dat = np.column_stack((numparticles * ['Ar'], r))
+        np.savetxt(dumpfile, dat, header="{}\ntype x y z"
+                   .format(numparticles), fmt="%s", comments='')
+               
+    @staticmethod    
+    def print_simulation(potential, integrator, poteng, distance, dumpfile):
+        """ Print information to terminal when starting a simulation
+        """
+        print("\n\n" + 12 * "=", " SIMULATION INFORMATION ", 12 * "=")
+        print("Potential:            ", potential)
+        print("Integrator:           ", integrator)
+        print("Potential energy:     ", poteng)
+        print("Store distance:       ", distance)
+        print("Dump file:            ", dumpfile)
+        print(50 * "=" + "\n\n")
     
-    def simulate(self, potential, integrator, poteng=True, distance=False, dumpfile=None):
+    def __call__(self, potential, 
+                       integrator, 
+                       poteng=True, 
+                       distance=False, 
+                       dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
@@ -195,6 +216,10 @@ class MDSolver:
             specified, positions are not dumped.
         """
         self.potential = potential
+        self.integrator = integrator
+        
+        # Print information
+        self.print_simulation(potential, integrator, poteng, distance, dumpfile)
         
         a, u, d = potential(self.r[0])
         if distance: 
@@ -205,14 +230,12 @@ class MDSolver:
             self.u[0] = u
         if dumpfile is not None: 
             f = open(dumpfile,'w')       # Open dumpfile
-            self.dumpPositions(0,f)     # Dump initial positions
+            self.dumpPositions(self.r[0],f)     # Dump initial positions
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            # integrate to find velocities and positions
             self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
-            #self.r[t+1], self.v[t+1] = self.boundary(r, v)
             if dumpfile is not None: 
-                self.dumpPositions(t+1,f) # dump positions to file
+                self.dumpPositions(self.r[t+1],f) # dump positions to file
             if distance:
                 self.d[t] = d
             if poteng:
@@ -258,9 +281,9 @@ if __name__ == "__main__":
     from integrator import VelocityVerlet, EulerChromer
 
     solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
-    solver.simulate(potential=LennardJones(cutoff=3), 
-                    integrator=EulerChromer(solver),
-                    distance=True,
-                    dumpfile="../data/2N_1D_1.5S.data")
+    solver(potential=LennardJones(solver), 
+           integrator=EulerChromer(solver),
+           distance=True,
+           dumpfile="../data/2N_1D_1.5S.data")
     solver.plot_distance()
     solver.plot_energy()

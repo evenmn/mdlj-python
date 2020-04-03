@@ -13,8 +13,15 @@ class Potential:
                                    .format(self.__class__.__name__))
 
 class LennardJones(Potential):
-    def __init__(self, cutoff=3.0):
-        self.cutoffSqrd = cutoff * cutoff
+    def __init__(self, solver):
+        self.cutoff = solver.cutoff
+        self.lenbox = solver.lenbox
+        self.boundary = solver.boundary
+        
+    def __repr__(self):
+        """ Representing the potential.
+        """
+        return "Lennard-Jones potential"
         
     #@staticmethod
     def calculateDistanceMatrix(self, r):
@@ -43,17 +50,19 @@ class LennardJones(Potential):
         half = par*par // 2
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
         drAll = x - y
+        if self.boundary == 'p':
+            drAll -= np.round(drAll/self.lenbox)* self.lenbox
         distanceSqrdAll = np.einsum('ijk,ijk->ij',drAll,drAll)        # r^2
         upperTri = np.triu_indices(par, 1)
         distanceSqrdHalf = distanceSqrdAll[upperTri]
         drHalf = drAll[upperTri]
-        indices = np.nonzero(distanceSqrdHalf<self.cutoffSqrd)
+        indices = np.nonzero(distanceSqrdHalf<self.cutoff*self.cutoff)
         distanceSqrd = distanceSqrdHalf[indices]      # Ignoring the particles separated
         dr = drHalf[indices]                          # by a distance > cutoff
         return distanceSqrdAll, distanceSqrd, dr, indices
         
     @staticmethod
-    def potentialEnergy(u):
+    def potentialEnergy(u, cutoff):
         """ Calculates the potential energy at timestep t, based on 
         the potential energies of all particles stored in the matrix
         u.
@@ -62,9 +71,8 @@ class LennardJones(Potential):
         u : ndarray
             array containing the potential energy of all the particles.
         """
-        # TODO: Shift potential
         u[u == np.inf] = 0
-        return 4 * np.sum(u)
+        return 4 * (np.sum(u) - cutoff**(-12) - cutoff**(-6))
         
     def __call__(self, r):
         """ Lennard-Jones inter-atomic force. This is used in the
@@ -81,24 +89,32 @@ class LennardJones(Potential):
             The netto force acting on every particle
         """
         par, dim = r.shape
+        
+        # Compute force
         distanceSqrdAll, distanceSqrd, dr, indices = self.calculateDistanceMatrix(r)
         distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
         distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
         factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceSqrd)            # (2/r^12 - 1/r^6)/r^2
         factor[factor == np.inf] = 0
-        force = - 24 * np.einsum('i,ij->ij',factor,dr)
-        force2 = np.zeros((par*par,dim))
+        force = 24 * np.einsum('i,ij->ij',factor,dr)
+        
+        # Ensure that force acts on the correct particles
+        #forceMatrix = np.zeros((par,par,dim))
         upperTri = np.triu_indices(par, 1)
+        #forceMatrix[upperTri] = -force
+        #forceMatrix=forceMatrix.transpose(1,0,2)
+        #forceMatrix[upperTri] = force
+
         a = np.arange(par*par).reshape(par,par)
         b = a[upperTri]
         c = b[indices]
         d = a.T
         e = d[upperTri]
         f = e[indices]
-        
-        force2[c] = -force
-        force2[f] = force
+        force2 = np.zeros((par*par,dim))
+        force2[c] = force
+        force2[f] = -force
         force2 = force2.reshape(par,par,dim)
         force3 = np.sum(force2, axis=1)
-        u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv)
+        u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv, self.cutoff)
         return force3, u, distanceSqrdAll

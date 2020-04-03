@@ -7,52 +7,40 @@ class Integrator:
                                    .format(self.__class__.__name__))
                  
     @staticmethod                  
-    def boundary(r, v, lenbox, numdimensions, boundaries, potential):
+    def boundary(r, v, lenbox, numdimensions, boundary, potential):
         import numpy as np
         # Set boundaries
-        for d in range(numdimensions):
-            lo, hi = 0, lenbox
-            if boundaries[d] == 'o':
-                # Open boundaries: no action
-                continue
-            elif boundaries[d] == 'r':
-                # Reflective boundaries
-                r_d = r[:,d]
-                v_d = v[:,d]
-                # Reverse speed when hitting wall
-                v_d = np.where(r_d>hi, -v_d, v_d)
-                v_d = np.where(r_d<lo, -v_d, v_d)
-                # Ensure that the particle is located inside box 
-                r_d = np.where(r_d>hi, 2*hi - r_d, r_d)
-                r_d = np.where(r_d<lo, 2*lo - r_d, r_d)
-                v[:,d] = v_d
-                r[:,d] = r_d
-            elif boundaries[d] == 'p':
-                # Periodic boundaries: do not affect speed
-                r_d = r[:,d]
-                # Move particle to other side of box when hitting wall
-                r_d = np.where(r_d>hi, r_d - hi + lo, r_d)
-                r_d = np.where(r_d<lo, r_d + hi + lo, r_d)
-                r[:,d] = r_d
-                # 
-                zero = np.zeros(numdimensions)
-                zero[d] = lo-hi
-                r_dl = np.add(r, zero)
-                zero = np.zeros(numdimensions)
-                zero[d] = hi-lo
-                r_dr = np.add(r, zero)
-                
-                
-        a, u, d = potential(r)
+        hi, lo = lenbox, 0
+        if boundary == 'o':
+            # Open boundaries: no action
+            pass
+        elif boundary == 'r':
+            # Reflective boundaries
+            # Reverse speed when hitting wall
+            v = np.where(r>hi, -v, v)
+            v = np.where(r<lo, -v, v)
+            
+            # Ensure that the particle is located inside box 
+            r = np.where(r>hi, 2*hi - r, r)
+            r = np.where(r<lo, 2*lo - r, r)
+        elif boundary == 'p':
+            r -= np.floor(lenbox/r) * lenbox
+            
+        a, u, d = potential(r) 
         return r, v, a, u, d
 
 class ForwardEuler(Integrator):
     def __init__(self, solver):
         self.solver = solver
         self.dt = solver.dt
-        self.boundaries = solver.boundaries
+        self.boundaryy = solver.boundary
         self.numdimensions = solver.numdimensions
         self.lenbox = solver.lenbox
+        
+    def __repr__(self):
+        """ Representing the integrator.
+        """
+        return "Forward-Euler integrator"
         
     def __call__(self, r, v, a):
         """ Forward-Euler numerical integration. This function gets the
@@ -70,16 +58,21 @@ class ForwardEuler(Integrator):
         """
         r += v * self.dt
         v += a * self.dt
-        r, v, a, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaries, self.solver.potential)
+        r, v, a, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaryy, self.solver.potential)
         return r, v, a, u, d
         
 class EulerChromer(Integrator):
     def __init__(self, solver):
         self.solver = solver
         self.dt = solver.dt
-        self.boundaries = solver.boundaries
+        self.boundaryy = solver.boundary
         self.numdimensions = solver.numdimensions
         self.lenbox = solver.lenbox
+        
+    def __repr__(self):
+        """ Representing the integrator.
+        """
+        return "Euler-Chromer integrator"
         
     def __call__(self, r, v, a):
         """ Euler-Chromer numerical integration. This function gets the
@@ -97,16 +90,21 @@ class EulerChromer(Integrator):
         """
         v += a * self.dt
         r += v * self.dt
-        r, v, a, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaries, self.solver.potential)
+        r, v, a, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaryy, self.solver.potential)
         return r, v, a, u, d
 
 class VelocityVerlet(Integrator):
     def __init__(self, solver):
         self.solver = solver
         self.dt = solver.dt
-        self.boundaries = solver.boundaries
+        self.boundaryy = solver.boundary
         self.numdimensions = solver.numdimensions
         self.lenbox = solver.lenbox
+        
+    def __repr__(self):
+        """ Representing the integrator.
+        """
+        return "VelocityVerlet integrator"
         
     def __call__(self, r, v, a):
         """ Velocity-Verlet numerical integration. This function gets the
@@ -123,6 +121,6 @@ class VelocityVerlet(Integrator):
             inter-atomic potential (Lennard-Jones)
         """
         r += v * self.dt + 0.5 * a * self.dt**2
-        r, v, a_new, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaries, self.solver.potential)
+        r, v, a_new, u, d = self.boundary(r, v, self.lenbox, self.numdimensions, self.boundaryy, self.solver.potential)
         v += 0.5 * (a_new + a) * self.dt
         return r, v, a_new, u, d
