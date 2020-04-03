@@ -30,12 +30,11 @@ class Gauss(InitVelocities):
         self.var = var
         
     def __call__(self, par, dim):
-        v = np.random.normal(self.mean, self.var, size=(par, dim))
-        return v    
+        return np.random.normal(self.mean, self.var, size=(par, dim)) 
         
 class Temperature(InitVelocities):
     def __init__(self, T):
-        self.T = T
+        self.T = T/119.7        # Transform from Kelvin to reduced units
         
     def __call__(self, par, dim):
-        return np.zeros((par, dim))
+        return np.random.normal(0, np.sqrt(self.T), size=(par, dim))
