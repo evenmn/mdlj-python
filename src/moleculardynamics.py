@@ -34,16 +34,16 @@ class MDSolver:
     
     cells, lencell and numdimensions are only needed by fcc
     """
-    def __init__(self, positions='fcc', 
-                       velocity=None, 
+    
+    from initpositions import FCC
+    from initvelocities import Zero
+    def __init__(self, positions=FCC(cells=1, lenbox=3, dim=3), 
+                       velocity=Zero(), 
                        boundary='o',
-                       cells=2, 
-                       lenbox=20, 
-                       numdimensions=3, 
+                       lenbox=20,
                        cutoff=3,
                        T=5, 
-                       dt=0.01, 
-                       size=14):
+                       dt=0.01):
         
         self.lenbox = lenbox
         self.boundary = boundary
@@ -56,33 +56,22 @@ class MDSolver:
         self.time = np.linspace(0, T, self.N+1)
         
         # Initialize positions
-        if positions=='fcc':
-            self.face_centered_cube(cells, lenbox, numdimensions)
-        elif type(positions) == list:
-            self.numparticles = len(positions)
-            self.numdimensions = len(positions[0])
-            self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-            self.r[0] = positions
-        else:
-            raise TypeError("Initial positions needs to be a list of positions")
-        
-        self.dumpPositions(self.r[0], "../data/initialPositions.data")
+        r0 = positions()
+        self.numparticles = len(r0)
+        self.numdimensions = len(r0[0])
+        self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
+        self.r[0] = r0
+        self.dumpPositions(r0, "../data/initialPositions.data")
         
         # Initialize velocities
-        if velocity==None:
-            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-        elif velocity=="gauss":
-            self.v = np.random.normal(0, 1, size=(self.N+1, self.numparticles, self.numdimensions))
-        elif type(velocity) == list:
-            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-            self.v[0] = velocity
+        self.v = np.zeros(self.r.shape)
+        self.v[0] = velocity(self.numparticles, self.numdimensions)
         
         # print to terminal
         self.print_to_terminal()
         
         # for plotting
-        self.size = size                        # Label size in plots
-        self.label_size = {"size":str(size)}    # Dictionary with size
+        self.label_size = {"size":14}    # Dictionary with size
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
         
@@ -98,57 +87,6 @@ class MDSolver:
         print("Total time:           ", self.T, "\tps")
         print("Timestep:             ", self.dt, "\tps")
         print(50 * "=" + "\n\n")
-        
-    def face_centered_cube(self, cells, lenbox, dim):
-        """ Creating a face-centered cube of n^dim unit cells with
-        4 particles in each unit cell. The number of particles
-        then becomes (dim+1) * n ^ dim. Each unit cell has a 
-        length d. L=nd
-        
-        Parameters
-        ----------
-        cells : int
-            number of unit cells in each dimension
-        lenbox : float
-            length of box
-        dim : int
-            number of dimensions
-            
-        Returns
-        -------
-        2darray
-            initial particle configuration
-        """
-        self.numparticles = (dim+1) * cells ** dim
-        self.numdimensions = dim
-        self.r = np.zeros((self.N+1, self.numparticles, dim))
-        counter = 0
-        if dim==1:
-            for i in range(cells):
-                self.r[0,counter+0] = [i]
-                self.r[0,counter+1] = [0.5+i]
-                counter +=2
-        elif dim==2:
-            for i in range(cells):
-                for j in range(cells):
-                    self.r[0,counter+0] = [i, j]
-                    self.r[0,counter+1] = [i, 0.5+j]
-                    self.r[0,counter+2] = [0.5+i, j]
-                    counter += 3
-        elif dim==3:
-            for i in range(cells):
-                for j in range(cells):
-                    for k in range(cells):
-                        self.r[0,counter+0] = [i, j, k]
-                        self.r[0,counter+1] = [i, 0.5+j, 0.5+k]
-                        self.r[0,counter+2] = [0.5+i, j, 0.5+k]
-                        self.r[0,counter+3] = [0.5+i, 0.5+j, k]
-                        counter += 4
-        else:
-            raise ValueError("The number of dimensions needs to be in [1,3]")
-        # Scale initial positions correctly
-        self.r[0] *= lenbox/cells
-        return self.r[0]
         
         
     def kineticEnergy(self):
@@ -252,7 +190,7 @@ class MDSolver:
         for i in range(self.numparticles):
             for j in range(i):
                 plt.plot(self.time[:-1], distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
-        plt.legend(loc="best", fontsize=self.size)
+        plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel("$r_{ij}$", **self.label_size)
         plt.show()
@@ -269,7 +207,7 @@ class MDSolver:
         plt.plot(time, k, label="Kinetic")
         plt.plot(time, self.u, label="Potential")
         plt.plot(time, e, label="Total energy")
-        plt.legend(loc="best", fontsize=self.size)
+        plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
