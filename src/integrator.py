@@ -57,7 +57,7 @@ class ForwardEuler(Integrator):
         d : ndarray
             distance matrix of the new state
         """
-
+        r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt
         v += a * self.dt
         r = self.boundaries.checkPosition(r)
@@ -113,6 +113,7 @@ class EulerChromer(Integrator):
         d : ndarray
             distance matrix of the new state
         """
+        r, v, a = r.copy(), v.copy(), a.copy()
         v += a * self.dt
         r += v * self.dt
         r = self.boundaries.checkPosition(r)
@@ -168,6 +169,7 @@ class VelocityVerlet(Integrator):
         d : ndarray
             distance matrix of the new state
         """
+        r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt + 0.5 * a * self.dt**2
         r = self.boundaries.checkPosition(r)
         a_new, u, d = self.solver.potential(r)

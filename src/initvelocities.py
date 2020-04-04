@@ -40,8 +40,10 @@ class SetVelocities(InitVelocities):
         ndarray
             initial velocity configuration
         """
-        assert len(self.velocities) == par ("Number of velocities needs to match number of particles")
-        assert len(self.velocities[0]) == dim ("Velocity dim needs to match particle dim")
+        assert len(self.velocities) == par, \
+               "Number of velocities needs to match number of particles"
+        assert len(self.velocities[0]) == dim, \
+               "Velocity dim needs to match particle dim"
         return self.velocities
         
 class Zero(InitVelocities):

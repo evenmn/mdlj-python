@@ -146,8 +146,7 @@ class Periodic(Boundaries):
         ndarray
             changed position array
         """
-        r -= np.floor(self.lenbox/r) * self.lenbox
-        return r
+        return r - np.floor(r/self.lenbox) * self.lenbox
         
     @staticmethod
     def checkVelocity(v):
