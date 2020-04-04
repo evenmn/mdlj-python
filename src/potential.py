@@ -29,7 +29,16 @@ class LennardJones(Potential):
     """
     def __init__(self, solver, cutoff=3):
         self.cutoff = cutoff
+        self.cutoffSqrd = cutoff * cutoff
         self.boundaries = solver.boundaries
+        
+        # Generate indices of upper and lower triangles
+        par = solver.numparticles
+        dim = solver.numdimensions
+        self.forceShell = np.zeros((par,par,dim))
+        self.upperTri = np.triu_indices(par, 1)
+        self.index = np.array(self.upperTri).T
+        
         
     def __repr__(self):
         """ Representing the potential.
@@ -51,27 +60,29 @@ class LennardJones(Potential):
             
         Returns
         -------
-        dr : ndarray
-            distance vector between all the particles
-        distanceSqrd : ndarray
+        distanceSqrdAll : ndarray
             distance between all particles squared
-        distancePowSixInv : ndarray
-            distance between all particles to the power of six inverse
-        distancePowTwelveInv : ndarray
-            distance between all particles to the power of twelve inverse
+        distanceSqrd : ndarray
+            distance between particles that are closer than the cutoff
+        dr : ndarray
+            distance vector between particles that are closer than the cutoff
+        indices : ndarray
+            indices of the distance components that are closer than cutoff
         """
-        par, dim = r.shape
-        half = par*par // 2
+        # Find distance vector matrix and distance matrix
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
-        drAll = x - y
-        drAll = self.boundaries.checkDistance(drAll)
-        distanceSqrdAll = np.einsum('ijk,ijk->ij',drAll,drAll)        # r^2
-        upperTri = np.triu_indices(par, 1)
-        distanceSqrdHalf = distanceSqrdAll[upperTri]
-        drHalf = drAll[upperTri]
-        indices = np.nonzero(distanceSqrdHalf<self.cutoff*self.cutoff)
-        distanceSqrd = distanceSqrdHalf[indices]      # Ignoring the particles separated
-        dr = drHalf[indices]                          # by a distance > cutoff
+        drAll = x - y                                 # distance vector matrix
+        drAll = self.boundaries.checkDistance(drAll)  # check if satisfy bc
+        distanceSqrdAll = np.einsum('ijk,ijk->ij',drAll,drAll)    # r^2
+        
+        # Pick the upper triangular elements only from the matrices and flatten
+        distanceSqrdHalf = distanceSqrdAll[self.upperTri]
+        drHalf = drAll[self.upperTri]
+        
+        # Pick the components that are closer than the cutoff distance only
+        indices = np.nonzero(distanceSqrdHalf<self.cutoffSqrd)
+        distanceSqrd = distanceSqrdHalf[indices]
+        dr = drHalf[indices]
         return distanceSqrdAll, distanceSqrd, dr, indices
         
     @staticmethod
@@ -113,9 +124,7 @@ class LennardJones(Potential):
         ndarray
             current distance matrix
         """
-        par, dim = r.shape
-        
-        # Compute force
+        # Compute force between particles closer than cutoff
         distanceSqrdAll, distanceSqrd, dr, indices = self.calculateDistanceMatrix(r)
         distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
         distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
@@ -123,23 +132,13 @@ class LennardJones(Potential):
         factor[factor == np.inf] = 0
         force = 24 * np.einsum('i,ij->ij',factor,dr)
         
-        # Ensure that force acts on the correct particles
-        #forceMatrix = np.zeros((par,par,dim))
-        upperTri = np.triu_indices(par, 1)
-        #forceMatrix[upperTri] = -force
-        #forceMatrix=forceMatrix.transpose(1,0,2)
-        #forceMatrix[upperTri] = force
-
-        a = np.arange(par*par).reshape(par,par)
-        b = a[upperTri]
-        c = b[indices]
-        d = a.T
-        e = d[upperTri]
-        f = e[indices]
-        force2 = np.zeros((par*par,dim))
-        force2[c] = force
-        force2[f] = -force
-        force2 = force2.reshape(par,par,dim)
-        force3 = np.sum(force2, axis=1)
+        # Connect forces to correct particles
+        forceMatrix = self.forceShell.copy()
+        index = self.index[indices].T
+        forceMatrix[(index[0],index[1])] = force
+        forceMatrix[(index[1],index[0])] = -force
+        
+        # Return net force on each particle and potetial energy
+        forceParticles = np.sum(forceMatrix, axis=1)
         u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv, self.cutoff)
-        return force3, u, distanceSqrdAll
+        return forceParticles, u, distanceSqrdAll
