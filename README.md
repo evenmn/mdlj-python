@@ -73,7 +73,7 @@ solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
 #### Temperature initialization
 For initialization of the velocity according to some temperature, call the class object ```temperature(T)```. Here, ```T``` is the temperature given in Kelvin.
 
-**Example: 864 particles with an initial temperature 300K***
+**Example: 864 particles with an initial temperature 300K**
 ``` python
 from moleculardynamics import MDSolver
 from initpositions import FCC
@@ -122,7 +122,7 @@ solver = MDSolver(positions=FCC(cells=4, lenbulk=10,dim=3),
 ### Time scale
 The time scale is specified by ```T```, which is the total time and ```dt```, which is the time step.
 
-**Example: 864 particles with an initial temperature 300K, periodic boundaries, simulated through T=5 ps with dt=0.01***
+**Example: 864 particles with an initial temperature 300K, periodic boundaries, simulated through T=5 ps with dt=0.01**
 ``` python
 from moleculardynamics import MDSolver
 from initpositions import FCC
@@ -181,7 +181,7 @@ solver(potential=LennardJones(solver, cutoff=3),
        integrator=EulerChromer(solver))
 ```
 
-#### Forward-Euler
+#### Velocity-Verlet
 The VelocityVerlet integrator can by called by ```VelocityVerlet(solver)``` where ```solver``` is the solver object defined by the MDSolver.
 
 **Example: Simulate two particles on one dimension separated by a distance 1.5 using Lennard-Jones and Velocity-Verlet**
@@ -258,8 +258,6 @@ where ```dumpfile``` is the xyz-file given in simulator.
 ## To do list
 There are some issues with the code:
 
-- Fix periodic boundary conditions
-- Clean up Lennard-Jones potential and make faster
 - Face-centered cube can be implemented more compact and general without the need of numpy 
 - Make example directory
-- Fix SetVelocities for one particle
+- Implement radial distribution function
