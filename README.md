@@ -254,3 +254,12 @@ The simulations can easily be visualized using Ovito by calling
 $ ovito dumpfile
 ```
 where ```dumpfile``` is the xyz-file given in simulator.
+
+## To do list
+There are some issues with the code:
+
+- Fix periodic boundary conditions
+- Clean up Lennard-Jones potential and make faster
+- Face-centered cube can be implemented more compact and general without the need of numpy 
+- Make example directory
+- Fix SetVelocities for one particle
