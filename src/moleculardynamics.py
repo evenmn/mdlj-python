@@ -10,181 +10,145 @@ class MDSolver:
     
     Parameters
     ----------
-    positions : array_like, list
-        nested list with all coordinates of all
-        particles. Face-centered cube is default.
-    velocity : array_like, list
-        nested list with all velocities of all
-        particles. No velocity is default.
-    boundaries : str
-        string specifying the boundary conditions to be used in each 
-        direction. o - open, r - reflective, p - periodic
-    cells : int
-        number of unit cells
-    lenbox : float
-        length of simulation box. Applies in all dimensions
-    numdimensions : int
-        number of dimensions
+    positions : obj
+        class object defined by initpositions.py. Face-centered cube
+        with length 3 and 4 particles as default.
+    velocity : obj
+        class object defined by initvelocities.py. No velocity as default.
+    boundaries : obj
+        class object defined by boundaryconditions.py. Open boundaries 
+        as default.
     T : float
         total time
     dt : float
         time step
-    size : int
-        label size
-    
-    cells, lencell and numdimensions are only needed by fcc
     """
-    def __init__(self, positions='fcc', 
-                       velocity=None, 
-                       boundaries='ooo',
-                       cells=2, 
-                       lenbox=20, 
-                       numdimensions=3, 
+    
+    from initpositions import FCC
+    from initvelocities import Zero
+    from boundaryconditions import Open
+    
+    def __init__(self, positions=FCC(cells=1, lenbulk=3), 
+                       velocities=Zero(), 
+                       boundaries=Open(),
                        T=5, 
-                       dt=0.01, 
-                       size=14):
+                       dt=0.01):
         
-        self.lenbox = lenbox
         self.boundaries = boundaries
         
         # Define time scale and number of steps
         self.T = T
         self.dt = dt
         self.N = int(T/dt)
-        self.time = np.linspace(0, T, self.N+1)
+        self.time = np.linspace(0, T, self.N)
         
         # Initialize positions
-        if positions=='fcc':
-            self.face_centered_cube(cells, lenbox, numdimensions)
-        elif type(positions) == list:
-            self.numparticles = len(positions)
-            self.numdimensions = len(positions[0])
-            self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-            self.r[0] = positions
-        else:
-            raise TypeError("Initial positions needs to be a list of positions")
-        
-        self.dumpPositions(0, "../data/initialPositions.data")
+        r0 = positions()
+        self.numparticles = len(r0)
+        self.numdimensions = len(r0[0])
+        self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
+        self.r[0] = r0
+        self.dumpPositions(r0, "../data/initialPositions.data")
         
         # Initialize velocities
-        if velocity==None:
-            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-        elif velocity=="gauss":
-            self.v = np.random.normal(0, 1, size=(self.N+1, self.numparticles, self.numdimensions))
-        elif type(velocity) == list:
-            self.v = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-            self.v[0] = velocity
+        self.v = np.zeros(self.r.shape)
+        self.v[0] = velocities(self.numparticles, self.numdimensions)
         
         # print to terminal
         self.print_to_terminal()
         
         # for plotting
-        self.size = size                        # Label size in plots
-        self.label_size = {"size":str(size)}    # Dictionary with size
+        self.label_size = {"size":14}    # Dictionary with size
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
-        
         
     def print_to_terminal(self):
         """ Print information to terminal
         """
-        print("\n\n" + 10 * "=", " SYSTEM INFORMATION ", 10 * "=")
+        print("\n\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
+        print("Boundary conditions:  ", self.boundaries)
         print("Total time:           ", self.T, "\tps")
         print("Timestep:             ", self.dt, "\tps")
-        print(42 * "=" + "\n\n")
+        print(50 * "=" + "\n\n")
         
-        
-    def face_centered_cube(self, cells, lenbox, dim):
-        """ Creating a face-centered cube of n^dim unit cells with
-        4 particles in each unit cell. The number of particles
-        then becomes (dim+1) * n ^ dim. Each unit cell has a 
-        length d. L=nd
-        
-        Parameters
-        ----------
-        cells : int
-            number of unit cells in each dimension
-        lenbox : float
-            length of box
-        dim : int
-            number of dimensions
-            
-        Returns
-        -------
-        2darray
-            initial particle configuration
-        """
-        self.numparticles = (dim+1) * cells ** dim
-        self.numdimensions = dim
-        self.r = np.zeros((self.N+1, self.numparticles, dim))
-        counter = 0
-        if dim==1:
-            for i in range(cells):
-                self.r[0,counter+0] = [i]
-                self.r[0,counter+1] = [0.5+i]
-                counter +=2
-        elif dim==2:
-            for i in range(cells):
-                for j in range(cells):
-                    self.r[0,counter+0] = [i, j]
-                    self.r[0,counter+1] = [i, 0.5+j]
-                    self.r[0,counter+2] = [0.5+i, j]
-                    counter += 3
-        elif dim==3:
-            for i in range(cells):
-                for j in range(cells):
-                    for k in range(cells):
-                        self.r[0,counter+0] = [i, j, k]
-                        self.r[0,counter+1] = [i, 0.5+j, 0.5+k]
-                        self.r[0,counter+2] = [0.5+i, j, 0.5+k]
-                        self.r[0,counter+3] = [0.5+i, 0.5+j, k]
-                        counter += 4
-        else:
-            raise ValueError("The number of dimensions needs to be in [1,3]")
-        # Scale initial positions correctly
-        self.r[0] *= lenbox/cells
-        return self.r[0]
-        
-        
-    def kineticEnergy(self):
+    @staticmethod
+    def kineticEnergy(v):
         """ Returns the total kinetic energy for each timestep.
         This function is never called in the integration loop, but can 
         be used to obtain the energy of the system afterwards.
+        
+        Parameters
+        ----------
+        v : ndarray
+            velocity array
         
         Returns
         -------
         1darray
             total kinetic energy at all timesteps
         """
-        return (self.v**2).sum(axis=1).sum(axis=1)/2
+        return (v**2).sum(axis=1).sum(axis=1)/2
         
-        
-    def dumpPositions(self, t, dumpfile):
+    @staticmethod
+    def dumpPositions(r, dumpfile):
         """ Dumping positions at timestep t to a dumpfile. We use the xyz-
         format, which can easily be visualized using Ovito.
         
         Parameters
         ----------
-        t : int
-            current timestep
+        r : ndarray
+            position array
         dumpfile : str
             name and address of dumpfile
         """
-        dat = np.column_stack((self.numparticles * ['Ar'], self.r[t]))
-        np.savetxt(dumpfile, dat, header="{}\ntype x y z".format(self.numparticles), fmt="%s", comments='')
+        numparticles = len(r)
+        dat = np.column_stack((numparticles * ['Ar'], r))
+        np.savetxt(dumpfile, dat, header="{}\ntype x y z"
+                   .format(numparticles), fmt="%s", comments='')
+               
+    @staticmethod    
+    def print_simulation(potential, integrator, poteng, distance, dumpfile):
+        """ Print information to terminal when starting a simulation
+        
+        Parameters
+        ----------
+        potential : obj
+            object defining the inter-atomic potential
+        integrator : obj
+            object defining the integrator
+        poteng : bool or int
+            boolean saying whether or not the potential
+            energy should be calculated and stored.
+        distance : bool or int
+            boolean saying whether or not the distance matrix should be stored. 
+        dumpfile : str
+            filename that all the positions should be dumped to. If not 
+            specified, positions are not dumped.
+        """
+        print("\n\n" + 12 * "=", " SIMULATION INFORMATION ", 12 * "=")
+        print("Potential:            ", potential)
+        print("Integrator:           ", integrator)
+        print("Potential energy:     ", poteng)
+        print("Store distance:       ", distance)
+        print("Dump file:            ", dumpfile)
+        print(50 * "=" + "\n\n")
     
-    def simulate(self, potential, integrator, poteng=True, distance=False, dumpfile=None):
+    def __call__(self, potential, 
+                       integrator, 
+                       poteng=True, 
+                       distance=False, 
+                       dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
         Parameters
         ----------
-        potential : def
-            function defining the inter-atomic potential
-        integrator : def
-            function defining the integrator
+        potential : obj
+            object defining the inter-atomic potential
+        integrator : obj
+            object defining the integrator
         poteng : bool or int
             boolean saying whether or not the potential
             energy should be calculated and stored.
@@ -196,34 +160,47 @@ class MDSolver:
         """
         self.potential = potential
         
+        # Print information
+        self.print_simulation(potential, integrator, poteng, distance, dumpfile)
+        
+        # Compute initial acceleration, potential energy and distance matrix
         a, u, d = potential(self.r[0])
-        if distance: 
-            self.d = np.zeros((self.N+1, self.numparticles, self.numparticles))
-            self.d[0] = d
-        if poteng: 
-            self.u = np.zeros(self.N+1) # Potential energy
-            self.u[0] = u
+        
+        # Dump positions to dumpfile if dumpfile is defined
         if dumpfile is not None: 
             f = open(dumpfile,'w')       # Open dumpfile
-            self.dumpPositions(0,f)     # Dump initial positions
+            self.dumpPositions(self.r[0],f)     # Dump initial positions
+        
+        # Store distance matrix if distance=True
+        if distance: 
+            self.d = np.zeros((self.N, self.numparticles, self.numparticles))
+            self.d[0] = d
+            
+        # Store potential energy if poteng=True
+        if poteng: 
+            self.u = np.zeros(self.N) # Potential energy
+            self.u[0] = u
+            
+        # Integration loop
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            # integrate to find velocities and positions
             self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
-            #self.r[t+1], self.v[t+1] = self.boundary(r, v)
+            
+            # Dump positions to dumpfile if dumpfile is defined
             if dumpfile is not None: 
-                self.dumpPositions(t+1,f) # dump positions to file
+                self.dumpPositions(self.r[t+1],f) # dump positions to file
+                
+            # Store distance matrix if distance=True
             if distance:
                 self.d[t] = d
+                
+            # Store potential energy if poteng=True
             if poteng:
                 self.u[t] = u
+                
+        # Close dumpfile
         if dumpfile is not None: 
-            f.close()      # Close dumpfile
-        if distance: 
-            self.d[self.N] = potential.calculateDistanceMatrix(self.r[-1])[1]    # Calculate final distance 
-        if poteng:
-            dr, d, l, m = potential.calculateDistanceMatrix(self.r[-1])
-            self.u[self.N] = potential.potentialEnergy(m - l)
+            f.close()
         
     def plot_distance(self):
         """ Plot distance between all particles. The plot will contain a 
@@ -234,7 +211,7 @@ class MDSolver:
         for i in range(self.numparticles):
             for j in range(i):
                 plt.plot(self.time, distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
-        plt.legend(loc="best", fontsize=self.size)
+        plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel("$r_{ij}$", **self.label_size)
         plt.show()
@@ -245,26 +222,39 @@ class MDSolver:
         while the potential energy is taken from the specified potential
         (which in our case is Lennard-Jones).
         """
-        k = self.kineticEnergy()        # Kinetic energy
+        k = self.kineticEnergy(self.v)[:-1]   # Kinetic energy
         e = k + self.u                  # Total energy
         plt.plot(self.time, k, label="Kinetic")
         plt.plot(self.time, self.u, label="Potential")
         plt.plot(self.time, e, label="Total energy")
-        plt.legend(loc="best", fontsize=self.size)
+        plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
         plt.show()
-            
+        
+    def plot_temperature(self):
+        """ Plot the temperature as a function of time. The temperature
+        is calculated using the formula T=v^2/ND.
+        """
+        k = self.kineticEnergy(self.v)[:-1]
+        T = k * 2 * 119.7 / (self.numparticles * self.numdimensions)
+        plt.plot(self.time, T)
+        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
+        plt.ylabel(r"Temperature [K]", **self.label_size)
+        plt.show()
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
     from potential import LennardJones
-    from integrator import VelocityVerlet, EulerChromer
+    from integrator import EulerChromer
+    from initpositions import SetPositions
 
-    solver = MDSolver(positions=[[0.0], [1.5]], T=5, dt=0.01)
-    solver.simulate(potential=LennardJones(cutoff=3), 
-                    integrator=EulerChromer(solver),
-                    distance=True,
-                    dumpfile="../data/2N_1D_1.5S.data")
+    solver = MDSolver(positions=SetPositions([[0.0], [1.5]]), 
+                      T=5, 
+                      dt=0.01)
+    solver(potential=LennardJones(solver), 
+           integrator=EulerChromer(solver),
+           distance=True,
+           dumpfile="../data/2N_1D_1.5S.data")
     solver.plot_distance()
     solver.plot_energy()
