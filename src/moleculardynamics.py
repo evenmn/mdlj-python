@@ -247,9 +247,9 @@ if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
     from potential import LennardJones
     from integrator import EulerChromer
-    from initpositions import setPositions
+    from initpositions import SetPositions
 
-    solver = MDSolver(positions=setPositions([[0.0], [1.5]]), 
+    solver = MDSolver(positions=SetPositions([[0.0], [1.5]]), 
                       T=5, 
                       dt=0.01)
     solver(potential=LennardJones(solver, cutoff=2.5), 

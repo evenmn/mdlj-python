@@ -3,7 +3,7 @@ from potential import LennardJones
 from integrator import VelocityVerlet
 from initpositions import FCC
 
-solver = MDSolver(positions=FCC(cells=4, lenbox=10), 
+solver = MDSolver(positions=FCC(cells=4, lenbulk=10),
                   T=5, 
                   dt=0.01)
 solver(potential=LennardJones(solver), 

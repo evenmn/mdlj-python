@@ -9,7 +9,7 @@ class InitPositions:
         raise NotImplementedError ("Class {} has no instance '__call__'."
                                    .format(self.__class__.__name__))
                                    
-class setPositions(InitPositions):
+class SetPositions(InitPositions):
     """ Specify the positions manually using a nested list. By using
     this method, the user has done all the work and the class will 
     just return the user input.

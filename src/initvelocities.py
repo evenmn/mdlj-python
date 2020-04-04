@@ -11,7 +11,7 @@ class InitVelocities:
         raise NotImplementedError ("Class {} has no instance '__call__'."
                                    .format(self.__class__.__name__))
                                    
-class setVelocities(InitVelocities):
+class SetVelocities(InitVelocities):
     """ Specify the velocities manually using a nested list. By using
     this method, the user has done all the work and the class will 
     just return the user input.
@@ -40,10 +40,8 @@ class setVelocities(InitVelocities):
         ndarray
             initial velocity configuration
         """
-        assert self.velocities.shape[0] == par 
-            ("Number of velocities needs to match number of particles")
-        assert self.velocities.shape[1] == dim 
-            ("Velocity dim needs to match particle dim")
+        assert len(self.velocities) == par ("Number of velocities needs to match number of particles")
+        assert len(self.velocities[0]) == dim ("Velocity dim needs to match particle dim")
         return self.velocities
         
 class Zero(InitVelocities):
