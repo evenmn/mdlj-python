@@ -252,7 +252,7 @@ if __name__ == "__main__":
     solver = MDSolver(positions=SetPositions([[0.0], [1.5]]), 
                       T=5, 
                       dt=0.01)
-    solver(potential=LennardJones(solver, cutoff=2.5), 
+    solver(potential=LennardJones(solver), 
            integrator=EulerChromer(solver),
            distance=True,
            dumpfile="../data/2N_1D_1.5S.data")

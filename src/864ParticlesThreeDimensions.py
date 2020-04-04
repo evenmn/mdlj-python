@@ -21,7 +21,7 @@ solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
                   boundaries=Periodic(lenbox=12),
                   T=5, 
                   dt=0.01)
-solver(potential=LennardJones(solver), 
+solver(potential=LennardJones(solver, cutoff=2.5), 
        integrator=VelocityVerlet(solver),
        dumpfile="../data/864N_3D.data")
 solver.plot_energy()
