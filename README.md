@@ -1,5 +1,37 @@
 # Python-MD
-Molecular dynamics solver written in object-oriented Python. It is simple because it only supports symmetric systems, i.e., all sides have the same length and take the same boundary conditions. Furthermore, only the Lennard-Jones potential is implemented. Albeit efforts are put in making the code fast (mostly by replacing loops by vectorization operations), the performance cannot compete with packages written in low-level languages. 
+Molecular dynamics solver written in object-oriented Python. The solver supports various inter-particle potentials, integrators, boundary condition and initialization methods. However, it is simple because it only supports the microcanonical ensemble (NVE). Also, it only supports symmetric systems, i.e., all sides have the same length and take the same boundary conditions. Furthermore, only the Lennard-Jones potential is implemented. Albeit efforts are put in making the code fast (mostly by replacing loops by vectorization operations), the performance cannot compete with packages written in low-level languages. 
+
+## Installation
+First download the contents:
+``` bash
+$ git clone https://github.com/evenmn/Python-MD
+```
+and then install the mdsolver:
+``` bash
+$ cd Python-MD
+$ pip install .
+```
+
+## Example usage
+A example script could look like this:
+``` python
+from moleculardynamics import MDSolver
+from initpositions import FCC
+from initvelocities import Temperature
+from boundaryconditions import Periodic
+from potential import LennardJones
+from integrator import VelocityVerlet
+solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
+                  velocities=Temperature(T=300),
+                  boundaries=Periodic(lenbox=12),
+                  T=5,
+                  dt=0.01)
+solver(potential=LennardJones(solver, cutoff=3), 
+       integrator=VelocityVerlet(solver),
+       distance=False,
+       poteng=True,
+       dumpfile="864N_3D.data")
+```
 
 ## Set up solver
 The first thing we need to do is to set up the solver. The solver is given by
@@ -104,7 +136,7 @@ from moleculardynamics import MDSolver
 from initpositions import FCC
 from boundaryconditions import Reflective
 solver = MDSolver(positions=FCC(cells=4, lenbulk=10,dim=3),
-                  boundaries=Reflective(lenbox=10))
+                  boundaries=Reflective(lenbox=12))
 ```
 
 #### Periodic boundaries
@@ -116,7 +148,7 @@ from moleculardynamics import MDSolver
 from initpositions import FCC
 from boundaryconditions import Periodic
 solver = MDSolver(positions=FCC(cells=4, lenbulk=10,dim=3),
-                  boundaries=Periodic(lenbox=10))
+                  boundaries=Periodic(lenbox=12))
 ```
 
 ### Time scale
@@ -130,7 +162,7 @@ from initvelocities import Temperature
 from boundaryconditions import Periodic
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300),
-                  boundaries=Periodic(lenbox=10),
+                  boundaries=Periodic(lenbox=12),
                   T=5,
                   dt=0.01)
 ```
@@ -162,7 +194,7 @@ from potential import LennardJones
 from integrator import ForwardEuler
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
-solver(potential=LennardJones(solver, cutoff=3), 
+solver(potential=LennardJones(solver), 
        integrator=ForwardEuler(solver))
 ```
 
@@ -177,7 +209,7 @@ from potential import LennardJones
 from integrator import EulerChromer
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
-solver(potential=LennardJones(solver, cutoff=3), 
+solver(potential=LennardJones(solver), 
        integrator=EulerChromer(solver))
 ```
 
@@ -192,7 +224,7 @@ from potential import LennardJones
 from integrator import VelocityVerlet
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
-solver(potential=LennardJones(solver, cutoff=3), 
+solver(potential=LennardJones(solver), 
        integrator=VelocityVerlet(solver))
 ```
 
@@ -209,14 +241,14 @@ from potential import LennardJones
 from integrator import VelocityVerlet
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300),
-                  boundaries=Periodic(lenbox=10),
+                  boundaries=Periodic(lenbox=12),
                   T=5,
                   dt=0.01)
 solver(potential=LennardJones(solver, cutoff=3), 
        integrator=VelocityVerlet(solver),
        distance=False,
        poteng=True,
-       dumpfile="../data/864N_3D.data")
+       dumpfile="864N_3D.data")
 ```
 
 ## Visualize
