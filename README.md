@@ -15,12 +15,12 @@ $ pip install .
 ## Example usage
 A example script could look like this:
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from initvelocities import Temperature
-from boundaryconditions import Periodic
-from potential import LennardJones
-from integrator import VelocityVerlet
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.initvelocities import Temperature
+from mdsolver.boundaryconditions import Periodic
+from mdsolver.potential import LennardJones
+from mdsolver.integrator import VelocityVerlet
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300),
                   boundaries=Periodic(lenbox=12),
@@ -48,15 +48,15 @@ For manual initialization, call the class object ```SetPositions(positions)```. 
 
 **Example: Two particles in one dimension separated by a distance 1.5**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]]))
 ```
 
 **Example: Four particles in two dimensions**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
 solver = MDSolver(positions=SetPositions([[0,0], [0,2], [2,0], [2,2]]))
 ```
 
@@ -65,15 +65,15 @@ For face-centered cube, call the class object ```FCC(cells, lenbulk, dim)``` whe
 
 **Example: Four particles in three dimensions**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
 solver = MDSolver(positions=FCC(cells=1, lenbulk=3, dim=3))
 ```
 
 **Example: 864 particles in three dimensions**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3))
 ```
 
@@ -85,8 +85,8 @@ For no initial velocity, call the class object ```Zero()```. This is the default
 
 **Example**
 ``` python
-from moleculardynamics import MDSolver
-from initvelocities import Zero
+from mdsolver import MDSolver
+from mdsolver.initvelocities import Zero
 solver = MDSolver(velocities=Zero())
 ```
 
@@ -95,9 +95,9 @@ For manual velocity initialization, call the class object ```SetVelocities(veloc
 
 **Example: Two particles in one dimension both moving with a velocity v=2.0**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
-from initvelocities import SetVelocities
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
+from mdsolver.initvelocities import SetVelocities
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   velocities=SetVelocities([[2.0], [2.0]]))
 ```
@@ -107,9 +107,9 @@ For initialization of the velocity according to some temperature, call the class
 
 **Example: 864 particles with an initial temperature 300K**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from initvelocities import Temperature
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.initvelocities import Temperature
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300))
 ```
@@ -122,8 +122,8 @@ For open boundaries, call the class object ```Open()```. This is the default.
 
 **Example**
 ``` python
-from moleculardynamics import MDSolver
-from boundaryconditions import Open
+from mdsolver import MDSolver
+from mdsolver.boundaryconditions import Open
 solver = MDSolver(boundaries=Open())
 ```
 
@@ -132,9 +132,9 @@ For reflective boundaries, call the class object ```Reflective(lenbox)```, with 
 
 **Example: 256 particles with reflective boundary conditions**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from boundaryconditions import Reflective
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.boundaryconditions import Reflective
 solver = MDSolver(positions=FCC(cells=4, lenbulk=10,dim=3),
                   boundaries=Reflective(lenbox=12))
 ```
@@ -144,9 +144,9 @@ For periodic boundaries, call the class object ```Periodic(lenbox)```, with ```l
 
 **Example: 256 particles with periodic boundary conditions**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from boundaryconditions import Periodic
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.boundaryconditions import Periodic
 solver = MDSolver(positions=FCC(cells=4, lenbulk=10,dim=3),
                   boundaries=Periodic(lenbox=12))
 ```
@@ -156,10 +156,10 @@ The time scale is specified by ```T```, which is the total time and ```dt```, wh
 
 **Example: 864 particles with an initial temperature 300K, periodic boundaries, simulated through T=5 ps with dt=0.01**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from initvelocities import Temperature
-from boundaryconditions import Periodic
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.initvelocities import Temperature
+from mdsolver.boundaryconditions import Periodic
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300),
                   boundaries=Periodic(lenbox=12),
@@ -188,10 +188,10 @@ The forward-Euler integrator can by called by ```ForwardEuler(solver)``` where `
 
 **Example: Simulate two particles on one dimension separated by a distance 1.5 using Lennard-Jones and forward-Euler**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
-from potential import LennardJones
-from integrator import ForwardEuler
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
+from mdsolver.potential import LennardJones
+from mdsolver.integrator import ForwardEuler
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
 solver(potential=LennardJones(solver), 
@@ -203,10 +203,10 @@ The Euler-Chromer integrator can by called by ```EulerChromer(solver)``` where `
 
 **Example: Simulate two particles on one dimension separated by a distance 1.5 using Lennard-Jones and Euler-Chromer**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
-from potential import LennardJones
-from integrator import EulerChromer
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
+from mdsolver.potential import LennardJones
+from mdsolver.integrator import EulerChromer
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
 solver(potential=LennardJones(solver), 
@@ -218,10 +218,10 @@ The VelocityVerlet integrator can by called by ```VelocityVerlet(solver)``` wher
 
 **Example: Simulate two particles on one dimension separated by a distance 1.5 using Lennard-Jones and Velocity-Verlet**
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import SetPositions
-from potential import LennardJones
-from integrator import VelocityVerlet
+from mdsolver import MDSolver
+from mdsolver.initpositions import SetPositions
+from mdsolver.potential import LennardJones
+from mdsolver.integrator import VelocityVerlet
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]])
                   T=5, dt=0.01)
 solver(potential=LennardJones(solver), 
@@ -233,12 +233,12 @@ The remaining arguments are to specify what should be stored throughout the simu
 
 **Example: Simulate 864 particles with an initial temperature 300K, periodic boundaries, simulated through T=5 ps with dt=0.01 using LennardJones potential and Velocity-Verlet integrator***
 ``` python
-from moleculardynamics import MDSolver
-from initpositions import FCC
-from initvelocities import Temperature
-from boundaryconditions import Periodic
-from potential import LennardJones
-from integrator import VelocityVerlet
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.initvelocities import Temperature
+from mdsolver.boundaryconditions import Periodic
+from mdsolver.potential import LennardJones
+from mdsolver.integrator import VelocityVerlet
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10, dim=3),
                   velocities=Temperature(T=300),
                   boundaries=Periodic(lenbox=12),
@@ -286,10 +286,3 @@ The simulations can easily be visualized using Ovito by calling
 $ ovito dumpfile
 ```
 where ```dumpfile``` is the xyz-file given in simulator.
-
-## To do list
-There are some issues with the code:
-
-- Face-centered cube can be implemented more compact and general without the need of numpy 
-- Make example directory
-- Implement radial distribution function
