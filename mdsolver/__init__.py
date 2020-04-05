@@ -48,7 +48,7 @@ class MDSolver:
         self.numdimensions = len(r0[0])
         self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
         self.r[0] = r0
-        self.dumpPositions(r0, "data/initialPositions.data")
+        self.dumpPositions(r0, "initialPositions.data")
         
         # Initialize velocities
         self.v = np.zeros(self.r.shape)
@@ -61,6 +61,11 @@ class MDSolver:
         self.label_size = {"size":14}    # Dictionary with size
         plt.style.use("bmh")                    # Beautiful plots
         plt.rcParams["font.family"] = "Serif"   # Font
+        
+    def __repr__(self):
+        return """MDSolver is the heart of the molecular dynamics code. 
+                  It sets up the solver and distribute tasks to other 
+                  classes. """
         
     def print_to_terminal(self):
         """ Print information to terminal
