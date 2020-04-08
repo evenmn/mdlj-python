@@ -72,7 +72,7 @@ class LennardJones(Potential):
         # Find distance vector matrix and distance matrix
         x, y = r[:,np.newaxis,:], r[np.newaxis,:,:]
         drAll = x - y                                 # distance vector matrix
-        drAll = self.boundaries.checkDistance(drAll)  # check if satisfy bc
+        drAll += self.boundaries.correctDistance(drAll)  # check if satisfy bc
         distanceSqrdAll = np.einsum('ijk,ijk->ij',drAll,drAll)    # r^2
         
         # Pick the upper triangular elements only from the matrices and flatten

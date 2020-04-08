@@ -56,14 +56,17 @@ class ForwardEuler(Integrator):
             potential energy of the new state
         d : ndarray
             distance matrix of the new state
+        corrected_position : ndarray
+            corrected position
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt
         v += a * self.dt
-        r = self.boundaries.checkPosition(r)
-        v = self.boundaries.checkVelocity(v)
+        corrected_position = self.boundaries.correctPosition(r)
+        r += corrected_position
+        v += self.boundaries.correctVelocity(v)
         a, u, d = self.solver.potential(r)
-        return r, v, a, u, d
+        return r, v, a, u, d, corrected_position
         
 class EulerChromer(Integrator):
     """ Euler-Chromer integrator, based on the integration scheme
@@ -112,14 +115,17 @@ class EulerChromer(Integrator):
             potential energy of the new state
         d : ndarray
             distance matrix of the new state
+        corrected_position : ndarray
+            corrected position
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         v += a * self.dt
         r += v * self.dt
-        r = self.boundaries.checkPosition(r)
-        v = self.boundaries.checkVelocity(v) 
+        corrected_position = self.boundaries.correctPosition(r)
+        r += corrected_position
+        v += self.boundaries.correctVelocity(v) 
         a, u, d = self.solver.potential(r)
-        return r, v, a, u, d
+        return r, v, a, u, d, corrected_position
 
 class VelocityVerlet(Integrator):
     """ Velocity-Verlet integrator, based on the integration scheme
@@ -162,17 +168,20 @@ class VelocityVerlet(Integrator):
             new position array
         v : ndarray
             new velocity array
-        a : ndarray
+        a_new : ndarray
             new acceleration array
         u : float
             potential energy of the new state
         d : ndarray
             distance matrix of the new state
+        corrected_position : ndarray
+            corrected position
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt + 0.5 * a * self.dt**2
-        r = self.boundaries.checkPosition(r)
+        corrected_position = self.boundaries.correctPosition(r)
+        r += corrected_position
         a_new, u, d = self.solver.potential(r)
         v += 0.5 * (a_new + a) * self.dt
-        v = self.boundaries.checkVelocity(v)
-        return r, v, a_new, u, d
+        v += self.boundaries.correctVelocity(v)
+        return r, v, a_new, u, d, corrected_position

@@ -7,8 +7,16 @@ class Boundaries:
     def __init__(self):
         pass
     
-    def checkPosition(self, r):
-        raise NotImplementedError ("Class {} has no instance 'checkPosition'."
+    def correctPosition(self, r):
+        raise NotImplementedError ("Class {} has no instance 'correctPosition'."
+                                   .format(self.__class__.__name__))
+                                   
+    def correctVelocity(self, r):
+        raise NotImplementedError ("Class {} has no instance 'correctVelocity'."
+                                   .format(self.__class__.__name__))
+    
+    def correctDistance(self, r):
+        raise NotImplementedError ("Class {} has no instance 'correctDistance'."
                                    .format(self.__class__.__name__))
                                    
 class Open(Boundaries):
@@ -23,7 +31,7 @@ class Open(Boundaries):
         return "Open boundaries"
         
     @staticmethod
-    def checkPosition(r):
+    def correctPosition(r):
         """ Check if the positions satisfy the boundary conditions.
         
         Parameters
@@ -34,12 +42,12 @@ class Open(Boundaries):
         Returns
         -------
         ndarray
-            changed position array
+            position array correction
         """
-        return r
+        return np.zeros(r.shape)
         
     @staticmethod
-    def checkVelocity(v):
+    def correctVelocity(v):
         """ Check if the velocities satisfy the boundary conditions.
         
         Parameters
@@ -50,12 +58,12 @@ class Open(Boundaries):
         Returns
         -------
         ndarray
-            changed velocity array
+            velocity correction
         """
-        return v
+        return np.zeros(v.shape)
         
     @staticmethod
-    def checkDistance(dr):
+    def correctDistance(dr):
         """ Check if the distance vectors satisfy the boundary conditions.
         
         Parameters
@@ -66,9 +74,9 @@ class Open(Boundaries):
         Returns
         -------
         ndarray
-            changed distance vectors
+            correction of distance vectors
         """
-        return dr
+        return np.zeros(dr.shape)
         
 class Reflective(Boundaries):
     def __init__(self, lenbox):
@@ -77,7 +85,7 @@ class Reflective(Boundaries):
     def __repr__(self):
         return "Reflective boundaries with box length {}".format(self.lenbox)
         
-    def checkPosition(self, r):
+    def correctPosition(self, r):
         """ Check if the positions satisfy the boundary conditions.
         
         Parameters
@@ -88,14 +96,17 @@ class Reflective(Boundaries):
         Returns
         -------
         ndarray
-            changed position array
+            position correction
         """
         self.r = r
-        r = np.where(r>self.lenbox, 2*self.lenbox - r, r)
-        r = np.where(r<0, - r, r)
-        return r
+        passed_wall = np.floor(r/self.lenbox)
+        return - passed_wall * (2*r + (passed_wall+1) * 2*self.lenbox)
         
-    def checkVelocity(self, v):
+        #r = np.where(r>self.lenbox, 2*self.lenbox - r, r)
+        #r = np.where(r<0, - r, r)
+        #return r
+        
+    def correctVelocity(self, v):
         """ Check if the velocities satisfy the boundary conditions.
         
         Parameters
@@ -106,12 +117,13 @@ class Reflective(Boundaries):
         Returns
         -------
         ndarray
-            changed velocity array
+            velocity correction
         """
-        return np.where(self.r//self.lenbox == 0, v, -v)
+        return - 2 * np.floor(self.r/self.lenbox) * v
+        #return np.where(self.r // self.lenbox == 0, v, -v)
         
     @staticmethod
-    def checkDistance(dr):
+    def correctDistance(dr):
         """ Check if the distance vectors satisfy the boundary conditions.
         
         Parameters
@@ -122,9 +134,9 @@ class Reflective(Boundaries):
         Returns
         -------
         ndarray
-            changed distance vectors
+            correction of distance vectors
         """
-        return dr
+        return np.zeros(dr.shape)
         
 class Periodic(Boundaries):
     def __init__(self, lenbox):
@@ -133,7 +145,7 @@ class Periodic(Boundaries):
     def __repr__(self):
         return "Periodic boundaries with box length {}".format(self.lenbox)
         
-    def checkPosition(self, r):
+    def correctPosition(self, r):
         """ Check if the positions satisfy the boundary conditions.
         
         Parameters
@@ -144,12 +156,12 @@ class Periodic(Boundaries):
         Returns
         -------
         ndarray
-            changed position array
+            position correction
         """
-        return r - np.floor(r/self.lenbox) * self.lenbox
+        return - np.floor(r/self.lenbox) * self.lenbox
         
     @staticmethod
-    def checkVelocity(v):
+    def correctVelocity(v):
         """ Check if the velocities satisfy the boundary conditions.
         
         Parameters
@@ -160,11 +172,11 @@ class Periodic(Boundaries):
         Returns
         -------
         ndarray
-            changed velocity array
+            velocity correction
         """
-        return v
+        return np.zeros(v.shape)
         
-    def checkDistance(self, dr):
+    def correctDistance(self, dr):
         """ Check if the distance vectors satisfy the boundary conditions.
         
         Parameters
@@ -175,7 +187,7 @@ class Periodic(Boundaries):
         Returns
         -------
         ndarray
-            changed distance vectors
+            correction of distance vectors
         """
-        dr -= np.round(dr/self.lenbox) * self.lenbox
-        return dr
+        
+        return - np.round(dr/self.lenbox) * self.lenbox

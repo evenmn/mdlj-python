@@ -114,7 +114,7 @@ class MDSolver:
                    .format(numparticles), fmt="%s", comments='')
                
     @staticmethod    
-    def print_simulation(potential, integrator, poteng, distance, dumpfile):
+    def print_simulation(potential, integrator, poteng, distance, msd, dumpfile):
         """ Print information to terminal when starting a simulation
         
         Parameters
@@ -137,6 +137,7 @@ class MDSolver:
         print("Integrator:           ", integrator)
         print("Potential energy:     ", poteng)
         print("Store distance:       ", distance)
+        print("Calculate MSD:        ", msd)
         print("Dump file:            ", dumpfile)
         print(50 * "=" + "\n\n")
     
@@ -144,6 +145,7 @@ class MDSolver:
                        integrator, 
                        poteng=True, 
                        distance=False, 
+                       msd=False,
                        dumpfile=None):
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
@@ -159,6 +161,8 @@ class MDSolver:
             energy should be calculated and stored.
         distance : bool or int
             boolean saying whether or not the distance matrix should be stored. 
+        msd : bool or int
+            mean square displacement computed yes/no
         dumpfile : str
             filename that all the positions should be dumped to. If not 
             specified, positions are not dumped.
@@ -166,7 +170,7 @@ class MDSolver:
         self.potential = potential
         
         # Print information
-        self.print_simulation(potential, integrator, poteng, distance, dumpfile)
+        self.print_simulation(potential, integrator, poteng, distance, msd, dumpfile)
         
         # Compute initial acceleration, potential energy and distance matrix
         a, u, d = potential(self.r[0])
@@ -186,10 +190,13 @@ class MDSolver:
             self.u = np.zeros(self.N) # Potential energy
             self.u[0] = u
             
+        if msd:
+            self.msd = np.zeros(self.N)
+            
         # Integration loop
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            self.r[t+1], self.v[t+1], a, u, d = integrator(self.r[t], self.v[t], a)
+            self.r[t+1], self.v[t+1], a, u, d, changed_position = integrator(self.r[t], self.v[t], a)
             
             # Dump positions to dumpfile if dumpfile is defined
             if dumpfile is not None: 
@@ -202,6 +209,10 @@ class MDSolver:
             # Store potential energy if poteng=True
             if poteng:
                 self.u[t] = u
+                
+            if msd:
+                dis = self.r[t] + changed_position - self.r[0]
+                self.msd[t] = (dis**2).sum()/self.numparticles
                 
         # Close dumpfile
         if dumpfile is not None: 
@@ -247,6 +258,17 @@ class MDSolver:
         plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
         plt.ylabel(r"Temperature [K]", **self.label_size)
         plt.show()
+        
+    def plot_msd(self):
+        """ Plot the mean square displacement as a function of time. It is
+        calculated using the formula
+        
+        <r^2(t)> = <(r(t)-r(t0))^2>
+        """
+        plt.plot(self.time, self.msd)
+        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
+        plt.ylabel("Mean square displacement", **self.label_size)
+        plt.show()
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
@@ -260,6 +282,6 @@ if __name__ == "__main__":
     solver(potential=LennardJones(solver), 
            integrator=EulerChromer(solver),
            distance=True,
-           dumpfile="../data/2N_1D_1.5S.data")
+           dumpfile="2N_1D_1.5S.data")
     solver.plot_distance()
     solver.plot_energy()
