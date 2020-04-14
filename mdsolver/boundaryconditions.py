@@ -99,12 +99,16 @@ class Reflective(Boundaries):
             position correction
         """
         self.r = r
-        passed_wall = np.floor(r/self.lenbox)
-        return - passed_wall * (2*r + (passed_wall+1) * 2*self.lenbox)
+        #passed_wall = np.floor(r/self.lenbox)
+        #return - passed_wall * (2*r + (passed_wall+1) * 2*self.lenbox)
         
         #r = np.where(r>self.lenbox, 2*self.lenbox - r, r)
         #r = np.where(r<0, - r, r)
         #return r
+        
+        c = np.where(r>self.lenbox, -2*(r-self.lenbox), 0)
+        c += np.where(r<0, -2*r, 0)
+        return c
         
     def correctVelocity(self, v):
         """ Check if the velocities satisfy the boundary conditions.
@@ -119,7 +123,9 @@ class Reflective(Boundaries):
         ndarray
             velocity correction
         """
-        return - 2 * np.floor(self.r/self.lenbox) * v
+        #return - 2 * np.floor(self.r/self.lenbox) * v
+        return np.where(self.r // self.lenbox != 0, -2*v, 0)
+        #c += np.where(self.r<0, 
         #return np.where(self.r // self.lenbox == 0, v, -v)
         
     @staticmethod

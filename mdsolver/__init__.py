@@ -92,7 +92,7 @@ class MDSolver:
     
     def __call__(self, potential, 
                        integrator,
-                       tasks): 
+                       tasks=[]): 
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         

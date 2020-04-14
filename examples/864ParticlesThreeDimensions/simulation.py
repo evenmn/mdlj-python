@@ -15,6 +15,7 @@ from mdsolver.integrator import VelocityVerlet
 from mdsolver.initpositions import FCC
 from mdsolver.initvelocities import Temperature
 from mdsolver.boundaryconditions import Periodic, Reflective
+from mdsolver.tasks import PlotEnergy, PlotTemperature, MSD, DumpPositions, RDF, AutoCorrelation
 
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10), 
                   velocities=Temperature(T=300),
@@ -23,8 +24,9 @@ solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
                   dt=0.01)
 solver(potential=LennardJones(solver, cutoff=3), 
        integrator=VelocityVerlet(solver),
-       msd=True,
-       dumpfile="864N_3D.data")
-solver.plot_energy()
-solver.plot_temperature()
-solver.plot_msd()
+       tasks=[PlotEnergy(solver),
+              PlotTemperature(solver),
+              MSD(solver),
+              RDF(solver),
+              AutoCorrelation(solver),
+              DumpPositions(solver, dumpfile="864N_3D.data")])

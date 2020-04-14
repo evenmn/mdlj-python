@@ -13,14 +13,13 @@ from mdsolver import MDSolver
 from mdsolver.potential import LennardJones
 from mdsolver.integrator import EulerChromer
 from mdsolver.initpositions import SetPositions
+from mdsolver.tasks import PlotEnergy, DumpPositions, PlotDistance
 
-# Simulate two particles in one dimension separated by a distance 1.5 sigma
 solver = MDSolver(positions=SetPositions([[0.0], [1.5]]), 
                   T=5, 
-                  dt=0.001)
+                  dt=0.01)
 solver(potential=LennardJones(solver), 
        integrator=EulerChromer(solver),
-       distance=True,
-       dumpfile="2N_1D.data")
-solver.plot_distance()
-solver.plot_energy()
+       tasks=[PlotEnergy(solver),
+              DumpPositions(solver, "2N_1D_1.5S.data"),
+              PlotDistance(solver)])

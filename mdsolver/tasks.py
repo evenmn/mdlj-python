@@ -181,7 +181,7 @@ class PlotEnergy(Tasks):
         plt.plot(self.time, e, label="Total energy")
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t/\tau$]", **label_size)
-        plt.ylabel(r"Energy [$\varepsilon$]", **label_size)
+        plt.ylabel(r"Energy [$E/\varepsilon$]", **label_size)
         plt.show()
        
 class PlotDistance(Tasks):
@@ -214,7 +214,7 @@ class PlotDistance(Tasks):
                 plt.plot(self.time, self.d[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t/\tau$]", **label_size)
-        plt.ylabel("$r_{ij} [r/\sigma]$", **label_size)
+        plt.ylabel("$r_{ij}$ [$r/\sigma$]", **label_size)
         plt.show()
         
 class MSD(Tasks):
@@ -226,6 +226,9 @@ class MSD(Tasks):
         self.numparticles = solver.numparticles
         self.msd = np.zeros(solver.N)
         self.r0 = None
+        
+    def __str__(self):
+        return "Plotting the mean square distribution as a function of time."
         
     #@classmethod
     def _update(self, state, step):
@@ -255,6 +258,9 @@ class AutoCorrelation(Tasks):
         self.numparticles = solver.numparticles
         self.A = np.zeros(self.N)
         self.v0 = None
+        
+    def __str__(self):
+        return "Plotting velocity autocorrelation as a function of time."
         
     #@classmethod
     def _update(self, state, step):
@@ -290,8 +296,10 @@ class RDF(Tasks):
         self.num_bins = num_bins
         self.numparticles = solver.numparticles
         self.bin_edges = np.linspace(0, 3, num_bins+1)
-        self.rdf = np.zeros(self.num_bins)
         self.V = 1000
+        
+    def __str__(self):
+        return "Plotting the radial distribution function at the final timestep."
     
     def _update(self, state, step):
         if step == self.N-1:
@@ -304,12 +312,31 @@ class RDF(Tasks):
                 n += np.histogram(dr, bins=self.bin_edges)[0] # Count atoms within each
                                                          # distance interval.
             # Equation (7) on the preceding page:
-            rdf = self.V / self.numparticles**2 * n / (4 * np.pi * bin_centres**2 * bin_sizes)
-            return rdf
+            self.rdf = self.V / self.numparticles**2 * n / (4 * np.pi * bin_centres**2 * bin_sizes)
             
     def __call__(self):
         plt.plot(self.bin_edges[:-1], self.rdf)
-        plt.xlabel(r"$r$ [$r/\sigma$]", **label_size)
+        plt.xlabel(r"Radial distance [$r/\sigma$]", **label_size)
         plt.ylabel(r"$g(r)$", **label_size)
         plt.show()
     
+class PlotTemperature(Tasks):
+    def __init__(self, solver):
+        self.solver = solver
+        self.N = solver.N
+        self.time = solver.time
+        self.numparticles = solver.numparticles
+        self.numdimensions = solver.numdimensions
+        self.T = np.zeros(self.N)
+        
+    def __str__(self):
+        return "Plotting temperature as a function of time."
+        
+    def _update(self, state, step):
+        self.T[step] = (state.v**2).sum() * 4 * 119.7 / (self.numparticles * self.numdimensions)
+        
+    def __call__(self):
+        plt.plot(self.time, self.T)
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel(r"Temperature [K]", **label_size)
+        plt.show()
