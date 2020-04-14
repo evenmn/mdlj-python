@@ -30,6 +30,8 @@ class LennardJones(Potential):
     def __init__(self, solver, cutoff=3):
         self.cutoff = cutoff
         self.cutoffSqrd = cutoff * cutoff
+        self.cutoffPowSixInv = cutoff**(-6)
+        self.cutoffPowTwelveInv = cutoff**(-12)
         self.boundaries = solver.boundaries
         
         # Generate indices of upper and lower triangles
@@ -85,27 +87,6 @@ class LennardJones(Potential):
         dr = drHalf[indices]
         return distanceSqrdAll, distanceSqrd, dr, indices
         
-    @staticmethod
-    def potentialEnergy(u, cutoff):
-        """ Calculates the total potential energy, based on 
-        the potential energies of all particles stored in the matrix
-        u. Shifts the potential according to the cutoff.
-        
-        Parameters
-        ----------
-        u : ndarray
-            array containing the potential energy of all the particles.
-        cutoff : float
-            cutoff distance: maximum length of the interactions. 3 by default.
-            
-        Returns
-        -------
-        float
-            total potential energy
-        """
-        u[u == np.inf] = 0
-        return 4 * (np.sum(u) - cutoff**(-12) - cutoff**(-6))
-        
     def __call__(self, r):
         """ Lennard-Jones inter-atomic force. This is used in the
         integration loop to calculate the acceleration of particles. 
@@ -119,8 +100,8 @@ class LennardJones(Potential):
         -------
         ndarray
             the netto force acting on every particle
-        float
-            total potential energy
+        ndarray
+            decomposed potential energy
         ndarray
             current distance matrix
         """
@@ -139,6 +120,7 @@ class LennardJones(Potential):
         forceMatrix[(index[1],index[0])] = -force
         
         # Return net force on each particle and potetial energy
-        forceParticles = np.sum(forceMatrix, axis=1)
-        u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv, self.cutoff)
-        return forceParticles, u, distanceSqrdAll
+        a = np.sum(forceMatrix, axis=1)
+        uDecomp = distancePowTwelveInv - distancePowSixInv # Decomposed u
+        dSqrd = distanceSqrdAll
+        return a, uDecomp, dSqrd

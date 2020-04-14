@@ -25,6 +25,9 @@ class SetVelocities(InitVelocities):
     def __init__(self, velocities):
         self.velocities = velocities
         
+    def __repr__(self):
+        return "Initial positions set manually: ", str(positions)
+        
     def __call__(self, par, dim):
         """ Get the velocities.
         

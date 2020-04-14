@@ -23,6 +23,9 @@ class SetPositions(InitPositions):
     def __init__(self, positions):
         self.positions = positions
         
+    def __repr__(self):
+        return "Initial positions set manually: ", str(positions)
+        
     def __call__(self):
         """ Get the initial positions.
         
@@ -52,6 +55,9 @@ class FCC(InitPositions):
         self.cells = cells
         self.lenbulk = lenbulk
         self.dim = dim
+        
+    def __str__(self):
+        return "Initialize particles in a face-centered cube with lengths {}, ", str(positions)
     
     def __call__(self):
         """ Get the initial positions.
