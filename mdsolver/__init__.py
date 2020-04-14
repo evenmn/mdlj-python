@@ -35,6 +35,8 @@ class MDSolver:
                        dt=0.01):
         
         self.boundaries = boundaries
+        from collections import namedtuple
+        self.State = namedtuple('State', ['r', 'v', 'a', 'u', 'd', 'c'], verbose=True)
         
         # Define time scale and number of steps
         self.T = T
@@ -48,7 +50,7 @@ class MDSolver:
         self.numdimensions = len(r0[0])
         self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
         self.r[0] = r0
-        self.dumpPositions(r0, "initialPositions.data")
+        #self.dumpPositions(r0, "initialPositions.data")
         
         # Initialize velocities
         self.v = np.zeros(self.r.shape)
@@ -78,41 +80,7 @@ class MDSolver:
         print("Timestep:             ", self.dt, "\tps")
         print(50 * "=" + "\n\n")
         
-    @staticmethod
-    def kineticEnergy(v):
-        """ Returns the total kinetic energy for each timestep.
-        This function is never called in the integration loop, but can 
-        be used to obtain the energy of the system afterwards.
         
-        Parameters
-        ----------
-        v : ndarray
-            velocity array
-        
-        Returns
-        -------
-        1darray
-            total kinetic energy at all timesteps
-        """
-        return (v**2).sum(axis=1).sum(axis=1)/2
-        
-    @staticmethod
-    def dumpPositions(r, dumpfile):
-        """ Dumping positions at timestep t to a dumpfile. We use the xyz-
-        format, which can easily be visualized using Ovito.
-        
-        Parameters
-        ----------
-        r : ndarray
-            position array
-        dumpfile : str
-            name and address of dumpfile
-        """
-        numparticles = len(r)
-        dat = np.column_stack((numparticles * ['Ar'], r))
-        np.savetxt(dumpfile, dat, header="{}\ntype x y z"
-                   .format(numparticles), fmt="%s", comments='')
-               
     @staticmethod    
     def print_simulation(potential, integrator, poteng, distance, msd, dumpfile):
         """ Print information to terminal when starting a simulation
@@ -142,11 +110,8 @@ class MDSolver:
         print(50 * "=" + "\n\n")
     
     def __call__(self, potential, 
-                       integrator, 
-                       poteng=True, 
-                       distance=False, 
-                       msd=False,
-                       dumpfile=None):
+                       integrator,
+                       tasks): 
         """ Integration loop. Computes the time-development of position and 
         velocity using a given integrator and inter-atomic potential.
         
@@ -156,132 +121,38 @@ class MDSolver:
             object defining the inter-atomic potential
         integrator : obj
             object defining the integrator
-        poteng : bool or int
-            boolean saying whether or not the potential
-            energy should be calculated and stored.
-        distance : bool or int
-            boolean saying whether or not the distance matrix should be stored. 
-        msd : bool or int
-            mean square displacement computed yes/no
-        dumpfile : str
-            filename that all the positions should be dumped to. If not 
-            specified, positions are not dumped.
         """
         self.potential = potential
-        
-        # Print information
-        self.print_simulation(potential, integrator, poteng, distance, msd, dumpfile)
-        
-        # Compute initial acceleration, potential energy and distance matrix
-        a, u, d = potential(self.r[0])
-        
-        # Dump positions to dumpfile if dumpfile is defined
-        if dumpfile is not None: 
-            f = open(dumpfile,'w')       # Open dumpfile
-            self.dumpPositions(self.r[0],f)     # Dump initial positions
-        
-        # Store distance matrix if distance=True
-        if distance: 
-            self.d = np.zeros((self.N, self.numparticles, self.numparticles))
-            self.d[0] = d
             
-        # Store potential energy if poteng=True
-        if poteng: 
-            self.u = np.zeros(self.N) # Potential energy
-            self.u[0] = u
+        a, uDecomp, dSqrd = potential(self.r[0])
+        state = self.State(r=self.r[0], v=self.v[0], a=a, u=uDecomp, d=dSqrd, c=0)
             
-        if msd:
-            self.msd = np.zeros(self.N)
+        for task in tasks:
+            task._update(state, 0)
             
         # Integration loop
         from tqdm import tqdm
         for t in tqdm(range(self.N)):   # Integration loop
-            self.r[t+1], self.v[t+1], a, u, d, changed_position = integrator(self.r[t], self.v[t], a)
-            
-            # Dump positions to dumpfile if dumpfile is defined
-            if dumpfile is not None: 
-                self.dumpPositions(self.r[t+1],f) # dump positions to file
+            state = integrator(state)
+            for task in tasks:
+                task._update(state, t)
                 
-            # Store distance matrix if distance=True
-            if distance:
-                self.d[t] = d
-                
-            # Store potential energy if poteng=True
-            if poteng:
-                self.u[t] = u
-                
-            if msd:
-                dis = self.r[t] + changed_position - self.r[0]
-                self.msd[t] = (dis**2).sum()/self.numparticles
-                
-        # Close dumpfile
-        if dumpfile is not None: 
-            f.close()
-        
-    def plot_distance(self):
-        """ Plot distance between all particles. The plot will contain a 
-        graph for each particle pair, giving N(N-1)/2 graphs. It is 
-        recommended to use just for a small number of particles.
-        """
-        distance = np.sqrt(self.d)
-        for i in range(self.numparticles):
-            for j in range(i):
-                plt.plot(self.time, distance[:,i,j], label="$i={}$, $j={}$".format(i,j))
-        plt.legend(loc="best", fontsize=14)
-        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
-        plt.ylabel("$r_{ij}$", **self.label_size)
-        plt.show()
-        
-    def plot_energy(self):
-        """ This function plots the kinetic, potential and total energy.
-        The kinetic energy is taken from the kineticEnergy function,
-        while the potential energy is taken from the specified potential
-        (which in our case is Lennard-Jones).
-        """
-        k = self.kineticEnergy(self.v)[:-1]   # Kinetic energy
-        e = k + self.u                  # Total energy
-        plt.plot(self.time, k, label="Kinetic")
-        plt.plot(self.time, self.u, label="Potential")
-        plt.plot(self.time, e, label="Total energy")
-        plt.legend(loc="best", fontsize=14)
-        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
-        plt.ylabel(r"Energy [$\varepsilon$]", **self.label_size)
-        plt.show()
-        
-    def plot_temperature(self):
-        """ Plot the temperature as a function of time. The temperature
-        is calculated using the formula T=v^2/ND.
-        """
-        k = self.kineticEnergy(self.v)[:-1]
-        T = k * 2 * 119.7 / (self.numparticles * self.numdimensions)
-        plt.plot(self.time, T)
-        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
-        plt.ylabel(r"Temperature [K]", **self.label_size)
-        plt.show()
-        
-    def plot_msd(self):
-        """ Plot the mean square displacement as a function of time. It is
-        calculated using the formula
-        
-        <r^2(t)> = <(r(t)-r(t0))^2>
-        """
-        plt.plot(self.time, self.msd)
-        plt.xlabel(r"Time [$t'/\tau$]", **self.label_size)
-        plt.ylabel("Mean square displacement", **self.label_size)
-        plt.show()
+        for task in tasks:
+            task()
+
 
 if __name__ == "__main__":
     # EXAMPLE: TWO PARTICLES IN ONE DIMENSION INITIALLY SEPARATED BY 1.5 SIGMA
     from potential import LennardJones
     from integrator import EulerChromer
     from initpositions import SetPositions
+    from tasks import PlotEnergy, DumpPositions, PlotDistance
 
     solver = MDSolver(positions=SetPositions([[0.0], [1.5]]), 
                       T=5, 
                       dt=0.01)
     solver(potential=LennardJones(solver), 
            integrator=EulerChromer(solver),
-           distance=True,
-           dumpfile="2N_1D_1.5S.data")
-    solver.plot_distance()
-    solver.plot_energy()
+           tasks=[PlotEnergy(solver),
+                  DumpPositions(solver, "2N_1D_1.5S.data"),
+                  PlotDistance(solver)])

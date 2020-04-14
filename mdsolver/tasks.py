@@ -56,12 +56,56 @@ class DumpPositions(Tasks):
     def __call__(self):
         self.f.close()
 
+class PlotPositions(Tasks):
+    """ Plot position
+    """
+    def __init__(self, solver):
+        self.solver = solver
+        self.time = solver.time
+        self.r = np.zeros((solver.N, solver.numparticles, solver.numdimensions))
+    
+    def _update(self, state, step):
+        """ Append to position array.
+        """
+        self.r[step] = state.r
+        
+    def __call__(self):
+        """ Plot position as a function of time.
+        """
+        r = self.r[:,0,0]
+        plt.plot(self.time, r)
+        plt.xlabel("Time [ps]")
+        plt.ylabel(r"Position [r/$\sigma$]")
+        plt.show()
+        
+class PlotVelocities(Tasks):
+    """ Plot position
+    """
+    def __init__(self, solver):
+        self.solver = solver
+        self.time = solver.time
+        self.v = np.zeros((solver.N, solver.numparticles, solver.numdimensions))
+    
+    def _update(self, state, step):
+        """ Append to position array.
+        """
+        self.v[step] = state.v
+        
+    def __call__(self):
+        """ Plot position as a function of time.
+        """
+        v = self.v[:,0,0]
+        plt.plot(self.time, v)
+        plt.xlabel("Time [ps]")
+        plt.ylabel("Velocity")
+        plt.show()
         
 class PlotEnergy(Tasks):
     """ Plot energy
     """
     def __init__(self, solver):
         self.solver = solver
+        self.time = solver.time
         self.k = np.zeros(solver.N)
         self.u = np.zeros(solver.N)
        
@@ -119,9 +163,9 @@ class PlotEnergy(Tasks):
         """
         
         e = self.u + self.k                  # Total energy
-        plt.plot(self.solver.time, self.k, label="Kinetic")
-        plt.plot(self.solver.time, self.u, label="Potential")
-        plt.plot(self.solver.time, e, label="Total energy")
+        plt.plot(self.time, self.k, label="Kinetic")
+        plt.plot(self.time, self.u, label="Potential")
+        plt.plot(self.time, e, label="Total energy")
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
         plt.ylabel(r"Energy [$\varepsilon$]")#, **self.label_size)
@@ -132,6 +176,7 @@ class PlotDistance(Tasks):
     """
     def __init__(self, solver):
         self.solver = solver
+        self.time = solver.time
         self.numparticles=solver.numparticles
         self.d = np.zeros((solver.N, self.numparticles, self.numparticles))
        
@@ -146,7 +191,7 @@ class PlotDistance(Tasks):
         """
         for i in range(self.numparticles):
             for j in range(i):
-                plt.plot(self.solver.time, self.d[:,i,j], label="$i={}$, $j={}$".format(i,j))
+                plt.plot(self.time, self.d[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=14)
         plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
         plt.ylabel("$r_{ij}$")#, **self.label_size)
@@ -156,16 +201,18 @@ class MSD(Tasks):
     """ Mean square distance
     """
     def __init__(self, solver):
-        self.solver=solver
-        self.msd=np.zeros(solver.N)
-        self.r0=None
+        self.solver = solver
+        self.time = solver.time
+        self.numparticles = solver.numparticles
+        self.msd = np.zeros(solver.N)
+        self.r0 = None
         
     #@classmethod
     def _update(self, state, step):
         if self.r0 is None:
             self.r0 = state.r
         dis = state.r + state.c - self.r0
-        self.msd[step] = (dis**2).sum()/self.solver.numparticles
+        self.msd[step] = (dis**2).sum()/self.numparticles
         
     def __call__(self):
         """ Plot the mean square displacement as a function of time. It is
@@ -173,9 +220,77 @@ class MSD(Tasks):
         
         <r^2(t)> = <(r(t)-r(t0))^2>
         """
-        plt.plot(self.solver.time, self.msd)
+        plt.plot(self.time, self.msd)
         plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
         plt.ylabel("Mean square displacement")#, **self.label_size)
         plt.show()
         
-class 
+class AutoCorrelation(Tasks):
+    """ Velocity auto-correlation function.
+    """
+    def __init__(self, solver):
+        self.solver = solver
+        self.N = solver.N
+        self.time = solver.time
+        self.numparticles = solver.numparticles
+        self.A = np.zeros(self.N)
+        self.v0 = None
+        
+    #@classmethod
+    def _update(self, state, step):
+        if self.v0 is None:
+            self.v0 = state.v
+            self.v02 = np.einsum('ij,ij',self.v0,self.v0) * self.N
+            
+        self.A[step] = np.einsum('ij,ij',state.v,self.v0) / self.v02
+        
+    def __call__(self):
+        """ Plot the mean square displacement as a function of time. It is
+        calculated using the formula
+        
+        <A(t)> = <(v(t)*v(t0))/(v(t0)*v(t0))>
+        """
+        plt.plot(self.time, self.A)
+        plt.xlabel(r"Time [$t'/\tau$]") #, **self.label_size)
+        plt.ylabel("Velocity Auto-correlation")#, **self.label_size)
+        plt.show()
+        
+class RDF(Tasks):
+    """ Radial distribution function
+    
+    Parameters
+    ----------
+    bin_edges : ndarray
+        edges of bins. Typically np.linspace(0, rc, num_bins+1)
+        for some cut-off rc.
+    """
+    def __init__(self, solver, num_bins=100):
+        self.solver = solver
+        self.N = solver.N
+        self.num_bins = num_bins
+        self.numparticles = solver.numparticles
+        self.bin_edges = np.linspace(0, 3, num_bins+1)
+        self.rdf = np.zeros(self.num_bins)
+        self.V = 1000
+    
+    def _update(self, state, step):
+        if step == self.N-1:
+            print("YEAH")
+            r = state.r
+            bin_centres = 0.5 * (self.bin_edges[1:] + self.bin_edges[:-1])
+            bin_sizes = self.bin_edges[1:] - self.bin_edges[:-1]
+            n = np.zeros_like(bin_sizes)
+            for i in range(self.numparticles):
+                dr = np.linalg.norm(r - r[i], axis=1)    # Distances from atom i.
+                n += np.histogram(dr, bins=self.bin_edges)[0] # Count atoms within each
+                                                         # distance interval.
+            # Equation (7) on the preceding page:
+            rdf = self.V / self.numparticles**2 * n / (4 * np.pi * bin_centres**2 * bin_sizes)
+            return rdf
+            
+    def __call__(self):
+        plt.plot(self.bin_edges[:-1], self.rdf)
+        plt.xlabel(r"$r$ [$r/\sigma$]") #, **self.label_size)
+        plt.ylabel(r"$g(r)$")#, **self.label_size)
+        plt.show()
+    
