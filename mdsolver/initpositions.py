@@ -34,7 +34,8 @@ class SetPositions(InitPositions):
         ndarray
             initial particle configuration
         """
-        return self.positions
+        from numpy import array
+        return array(self.positions)
         
 class FCC(InitPositions):
     """ Creating a face-centered cube of n^dim unit cells with

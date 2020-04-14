@@ -47,7 +47,7 @@ class SetVelocities(InitVelocities):
                "Number of velocities needs to match number of particles"
         assert len(self.velocities[0]) == dim, \
                "Velocity dim needs to match particle dim"
-        return self.velocities
+        return np.array(self.velocities)
         
 class Zero(InitVelocities):
     """ No initial velocities.

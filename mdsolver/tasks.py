@@ -1,16 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# for plotting
+label_size = {"size":14}                # Dictionary with size
+plt.style.use("bmh")                    # Beautiful plots
+plt.rcParams["font.family"] = "Serif"   # Font
+
 class Tasks:
     """ Which physical observables to display
     """
     def __init__(self, solver):
         self.solver = solver
-        
-        # for plotting
-        self.label_size = {"size":14}    # Dictionary with size
-        plt.style.use("bmh")                    # Beautiful plots
-        plt.rcParams["font.family"] = "Serif"   # Font
         
     #@classmethod
     def _update(self, state, step):
@@ -30,7 +30,11 @@ class DumpPositions(Tasks):
     """
     def __init__(self, solver, dumpfile):
         self.solver=solver
+        self.dumpfile = dumpfile
         self.f = open(dumpfile,'w')       # Open dumpfile
+        
+    def __str__(self):
+        return "Dumping position to the file {}.".format(self.dumpfile)
         
     @staticmethod
     def dumpPositions(r, dumpfile):
@@ -64,6 +68,9 @@ class PlotPositions(Tasks):
         self.time = solver.time
         self.r = np.zeros((solver.N, solver.numparticles, solver.numdimensions))
     
+    def __str__(self):
+        return "Plotting positions as a function of time."
+    
     def _update(self, state, step):
         """ Append to position array.
         """
@@ -74,8 +81,8 @@ class PlotPositions(Tasks):
         """
         r = self.r[:,0,0]
         plt.plot(self.time, r)
-        plt.xlabel("Time [ps]")
-        plt.ylabel(r"Position [r/$\sigma$]")
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel(r"Position [r/$\sigma$]", **label_size)
         plt.show()
         
 class PlotVelocities(Tasks):
@@ -85,6 +92,9 @@ class PlotVelocities(Tasks):
         self.solver = solver
         self.time = solver.time
         self.v = np.zeros((solver.N, solver.numparticles, solver.numdimensions))
+        
+    def __str__(self):
+        return "Plotting velocities as a function of time."
     
     def _update(self, state, step):
         """ Append to position array.
@@ -96,8 +106,8 @@ class PlotVelocities(Tasks):
         """
         v = self.v[:,0,0]
         plt.plot(self.time, v)
-        plt.xlabel("Time [ps]")
-        plt.ylabel("Velocity")
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel("Velocity", **label_size)
         plt.show()
         
 class PlotEnergy(Tasks):
@@ -108,6 +118,9 @@ class PlotEnergy(Tasks):
         self.time = solver.time
         self.k = np.zeros(solver.N)
         self.u = np.zeros(solver.N)
+        
+    def __str__(self):
+        return "Plotting energies as a function of time."
        
     @staticmethod
     def potentialEnergy(u):
@@ -167,8 +180,8 @@ class PlotEnergy(Tasks):
         plt.plot(self.time, self.u, label="Potential")
         plt.plot(self.time, e, label="Total energy")
         plt.legend(loc="best", fontsize=14)
-        plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
-        plt.ylabel(r"Energy [$\varepsilon$]")#, **self.label_size)
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel(r"Energy [$\varepsilon$]", **label_size)
         plt.show()
        
 class PlotDistance(Tasks):
@@ -178,7 +191,14 @@ class PlotDistance(Tasks):
         self.solver = solver
         self.time = solver.time
         self.numparticles=solver.numparticles
+        
+        assert self.numparticles <= 4, (
+                "Cannot plot the distance for more than 4 particles.")
+        
         self.d = np.zeros((solver.N, self.numparticles, self.numparticles))
+        
+    def __str__(self):
+        return "Plotting distances as a function of time."
        
     #@classmethod
     def _update(self, state, step):
@@ -193,8 +213,8 @@ class PlotDistance(Tasks):
             for j in range(i):
                 plt.plot(self.time, self.d[:,i,j], label="$i={}$, $j={}$".format(i,j))
         plt.legend(loc="best", fontsize=14)
-        plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
-        plt.ylabel("$r_{ij}$")#, **self.label_size)
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel("$r_{ij} [r/\sigma]$", **label_size)
         plt.show()
         
 class MSD(Tasks):
@@ -221,8 +241,8 @@ class MSD(Tasks):
         <r^2(t)> = <(r(t)-r(t0))^2>
         """
         plt.plot(self.time, self.msd)
-        plt.xlabel(r"Time [$t'/\tau$]")#, **self.label_size)
-        plt.ylabel("Mean square displacement")#, **self.label_size)
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel("Mean square displacement", **label_size)
         plt.show()
         
 class AutoCorrelation(Tasks):
@@ -251,8 +271,8 @@ class AutoCorrelation(Tasks):
         <A(t)> = <(v(t)*v(t0))/(v(t0)*v(t0))>
         """
         plt.plot(self.time, self.A)
-        plt.xlabel(r"Time [$t'/\tau$]") #, **self.label_size)
-        plt.ylabel("Velocity Auto-correlation")#, **self.label_size)
+        plt.xlabel(r"Time [$t/\tau$]", **label_size)
+        plt.ylabel("Velocity Auto-correlation", **label_size)
         plt.show()
         
 class RDF(Tasks):
@@ -275,7 +295,6 @@ class RDF(Tasks):
     
     def _update(self, state, step):
         if step == self.N-1:
-            print("YEAH")
             r = state.r
             bin_centres = 0.5 * (self.bin_edges[1:] + self.bin_edges[:-1])
             bin_sizes = self.bin_edges[1:] - self.bin_edges[:-1]
@@ -290,7 +309,7 @@ class RDF(Tasks):
             
     def __call__(self):
         plt.plot(self.bin_edges[:-1], self.rdf)
-        plt.xlabel(r"$r$ [$r/\sigma$]") #, **self.label_size)
-        plt.ylabel(r"$g(r)$")#, **self.label_size)
+        plt.xlabel(r"$r$ [$r/\sigma$]", **label_size)
+        plt.ylabel(r"$g(r)$", **label_size)
         plt.show()
     

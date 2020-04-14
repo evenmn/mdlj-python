@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 
@@ -36,7 +35,7 @@ class MDSolver:
         
         self.boundaries = boundaries
         from collections import namedtuple
-        self.State = namedtuple('State', ['r', 'v', 'a', 'u', 'd', 'c'], verbose=True)
+        self.State = namedtuple('State', ['r', 'v', 'a', 'u', 'd', 'c'])
         
         # Define time scale and number of steps
         self.T = T
@@ -45,24 +44,15 @@ class MDSolver:
         self.time = np.linspace(0, T, self.N)
         
         # Initialize positions
-        r0 = positions()
-        self.numparticles = len(r0)
-        self.numdimensions = len(r0[0])
-        self.r = np.zeros((self.N+1, self.numparticles, self.numdimensions))
-        self.r[0] = r0
-        #self.dumpPositions(r0, "initialPositions.data")
+        self.r0 = positions()
+        self.numparticles, self.numdimensions = self.r0.shape
         
         # Initialize velocities
-        self.v = np.zeros(self.r.shape)
-        self.v[0] = velocities(self.numparticles, self.numdimensions)
+        self.v0 = velocities(self.numparticles, self.numdimensions)
         
         # print to terminal
         self.print_to_terminal()
         
-        # for plotting
-        self.label_size = {"size":14}    # Dictionary with size
-        plt.style.use("bmh")                    # Beautiful plots
-        plt.rcParams["font.family"] = "Serif"   # Font
         
     def __repr__(self):
         return """MDSolver is the heart of the molecular dynamics code. 
@@ -82,7 +72,7 @@ class MDSolver:
         
         
     @staticmethod    
-    def print_simulation(potential, integrator, poteng, distance, msd, dumpfile):
+    def print_simulation(potential, integrator, tasks):
         """ Print information to terminal when starting a simulation
         
         Parameters
@@ -91,23 +81,14 @@ class MDSolver:
             object defining the inter-atomic potential
         integrator : obj
             object defining the integrator
-        poteng : bool or int
-            boolean saying whether or not the potential
-            energy should be calculated and stored.
-        distance : bool or int
-            boolean saying whether or not the distance matrix should be stored. 
-        dumpfile : str
-            filename that all the positions should be dumped to. If not 
-            specified, positions are not dumped.
         """
         print("\n\n" + 12 * "=", " SIMULATION INFORMATION ", 12 * "=")
         print("Potential:            ", potential)
         print("Integrator:           ", integrator)
-        print("Potential energy:     ", poteng)
-        print("Store distance:       ", distance)
-        print("Calculate MSD:        ", msd)
-        print("Dump file:            ", dumpfile)
+        for task in tasks:
+            print(task)
         print(50 * "=" + "\n\n")
+        
     
     def __call__(self, potential, 
                        integrator,
@@ -123,9 +104,12 @@ class MDSolver:
             object defining the integrator
         """
         self.potential = potential
-            
-        a, uDecomp, dSqrd = potential(self.r[0])
-        state = self.State(r=self.r[0], v=self.v[0], a=a, u=uDecomp, d=dSqrd, c=0)
+        
+        self.print_simulation(potential, integrator, tasks)
+        
+        # Initialize    
+        a, uDecomp, dSqrd = potential(self.r0)
+        state = self.State(r=self.r0, v=self.v0, a=a, u=uDecomp, d=dSqrd, c=0)
             
         for task in tasks:
             task._update(state, 0)
@@ -137,6 +121,7 @@ class MDSolver:
             for task in tasks:
                 task._update(state, t)
                 
+        # Perform tasks
         for task in tasks:
             task()
 
