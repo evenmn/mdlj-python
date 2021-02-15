@@ -3,38 +3,38 @@ class Integrator:
     """
     def __init__(self):
         pass
-        
+
     def __call__(self, r, v, a):
-        raise NotImplementedError ("Class {} has no instance '__call__'."
-                                   .format(self.__class__.__name__))
+        raise NotImplementedError("Class {} has no instance '__call__'."
+                                  .format(self.__class__.__name__))
+
 
 class ForwardEuler(Integrator):
     """ Forward-Euler integrator, based on the integration scheme
         v[i+1] = v[i] + a * dt
         r[i+1] = r[i] + v[i] * dt
-        
+
     Parameters
     ----------
     solver : obj
-        class object defined by moleculardynamics.py. Takes the MDSolver 
+        class object defined by moleculardynamics.py. Takes the MDSolver
         class as argument
     """
     def __init__(self, solver):
         self.solver = solver
         self.boundaries = solver.boundaries
         self.dt = solver.dt
-        
-        
+
     def __repr__(self):
         """ Representing the integrator.
         """
         return "Forward-Euler integrator"
-        
+
     def __call__(self, r, v, a):
-        """ This function calculated the new position and velocity based on 
+        """ This function calculated the new position and velocity based on
         the integration scheme, and check if they satisfy the boundary
         conditions. Furthermore, the new acceleration is calculated.
-        
+
         Parameters
         ----------
         r : ndarray
@@ -43,7 +43,7 @@ class ForwardEuler(Integrator):
             previous velocity array
         a : ndarray
             previous acceleration
-            
+
         Returns
         -------
         r : ndarray
@@ -54,43 +54,42 @@ class ForwardEuler(Integrator):
             new acceleration array
         u : float
             potential energy of the new state
-        d : ndarray
-            distance matrix of the new state
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt
         v += a * self.dt
         r = self.boundaries.checkPosition(r)
         v = self.boundaries.checkVelocity(v)
-        a, u, d = self.solver.potential(r)
-        return r, v, a, u, d
-        
+        a, u = self.solver.potential(r, self.solver.compute_poteng)
+        return r, v, a, u
+
+
 class EulerChromer(Integrator):
     """ Euler-Chromer integrator, based on the integration scheme
         v[i+1] = v[i] + a * dt
         r[i+1] = r[i] + v[i+1] * dt
-        
+
     Parameters
     ----------
     solver : obj
-        class object defined by moleculardynamics.py. Takes the MDSolver 
+        class object defined by moleculardynamics.py. Takes the MDSolver
         class as argument
     """
     def __init__(self, solver):
         self.solver = solver
         self.boundaries = solver.boundaries
         self.dt = solver.dt
-        
+
     def __repr__(self):
         """ Representing the integrator.
         """
         return "Euler-Chromer integrator"
-        
+
     def __call__(self, r, v, a):
-        """ This function calculated the new position and velocity based on 
+        """ This function calculated the new position and velocity based on
         the integration scheme, and check if they satisfy the boundary
         conditions. Furthermore, the new acceleration is calculated.
-        
+
         Parameters
         ----------
         r : ndarray
@@ -99,7 +98,7 @@ class EulerChromer(Integrator):
             previous velocity array
         a : ndarray
             previous acceleration
-            
+
         Returns
         -------
         r : ndarray
@@ -110,43 +109,42 @@ class EulerChromer(Integrator):
             new acceleration array
         u : float
             potential energy of the new state
-        d : ndarray
-            distance matrix of the new state
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         v += a * self.dt
         r += v * self.dt
         r = self.boundaries.checkPosition(r)
-        v = self.boundaries.checkVelocity(v) 
-        a, u, d = self.solver.potential(r)
-        return r, v, a, u, d
+        v = self.boundaries.checkVelocity(v)
+        a, u = self.solver.potential(r, self.solver.compute_poteng)
+        return r, v, a, u
+
 
 class VelocityVerlet(Integrator):
     """ Velocity-Verlet integrator, based on the integration scheme
         r[i+1] = r[i] + v[i] * dt + 0.5 * a * dt^2
         v[i+1] = v[i] + 0.5 * (a + a_new) * dt
-        
+
     Parameters
     ----------
     solver : obj
-        class object defined by moleculardynamics.py. Takes the MDSolver 
+        class object defined by moleculardynamics.py. Takes the MDSolver
         class as argument
     """
     def __init__(self, solver):
         self.solver = solver
         self.boundaries = solver.boundaries
         self.dt = solver.dt
-        
+
     def __repr__(self):
         """ Representing the integrator.
         """
         return "VelocityVerlet integrator"
-        
+
     def __call__(self, r, v, a):
-        """ This function calculated the new position and velocity based on 
+        """ This function calculated the new position and velocity based on
         the integration scheme, and check if they satisfy the boundary
         conditions. Furthermore, the new acceleration is calculated.
-        
+
         Parameters
         ----------
         r : ndarray
@@ -155,7 +153,7 @@ class VelocityVerlet(Integrator):
             previous velocity array
         a : ndarray
             previous acceleration
-            
+
         Returns
         -------
         r : ndarray
@@ -166,13 +164,11 @@ class VelocityVerlet(Integrator):
             new acceleration array
         u : float
             potential energy of the new state
-        d : ndarray
-            distance matrix of the new state
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt + 0.5 * a * self.dt**2
         r = self.boundaries.checkPosition(r)
-        a_new, u, d = self.solver.potential(r)
+        a_new, u = self.solver.potential(r, self.solver.compute_poteng)
         v += 0.5 * (a_new + a) * self.dt
         v = self.boundaries.checkVelocity(v)
-        return r, v, a_new, u, d
+        return r, v, a_new, u
