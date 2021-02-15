@@ -1,4 +1,6 @@
 from numpy import asarray, zeros
+from pandas import read_table
+from io import StringIO
 
 
 class InitPosition:
@@ -105,7 +107,7 @@ class Restart(InitPosition):
             xyzfile = filename
         else:
             xyzfile = open(filename, 'r')
-        self.read_file_to_dataframe(xyzfile)
+        self.read_xyz(xyzfile)
 
     def read_xyz(self, xyzfile):
         """Read XYZ file and store contents in a Pandas DataFrame
@@ -116,7 +118,7 @@ class Restart(InitPosition):
         self.comment = xyzfile.readline()[:-3]
         # rest of the lines contain coordinates structured Element X Y Z
         string = "Element X Y Z \n" + xyzfile.read()
-        self.contents = pd.read_table(StringIO(string), sep=r'\s+')
+        self.contents = read_table(StringIO(string), sep=r'\s+')
 
     def __call__(self):
-        return self.contents.to_numpy()
+        return asarray(self.contents.to_numpy()[:, 1:], dtype=float)
