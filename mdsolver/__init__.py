@@ -79,13 +79,15 @@ class MDSolver:
         """
         if "poteng" in quantities:
             self.compute_poteng = True
+        else:
+            self.compute_poteng = False
         self.thermoobj = self.Thermo(freq, file, quantities)
 
     def snapshot(self, filename):
         """Take snapshot of system and write to xyz-file
         """
-        lst = ['x', 'y', 'z']
-        tmp_dumpobj = self.Dump(1, filename, *lst[:self.numdimensions])
+        lst = ('x', 'y', 'z')
+        tmp_dumpobj = self.Dump(1, filename, lst[:self.numdimensions])
         tmp_dumpobj(self)
         del tmp_dumpobj
 
