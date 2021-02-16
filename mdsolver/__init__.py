@@ -35,6 +35,7 @@ class MDSolver:
 
     def __init__(self, dt, positions, velocities=Zero(), boundaries=Open()):
 
+        self.t = 0
         self.dt = dt
 
         # Initialize positions
@@ -63,12 +64,12 @@ class MDSolver:
     def __repr__(self):
         return "MDSolver base class"
 
-    def set_potential(potential):
+    def set_potential(self, potential):
         """Set force-field
         """
         self.potential = potential
 
-    def set_integrator(integrator):
+    def set_integrator(self, integrator):
         """Set integrator
         """
         self.integrator = integrator
@@ -119,14 +120,16 @@ class MDSolver:
         integrator : obj
             object defining the integrator
         """
+        self.t0 = self.t
         # Integration loop
         start = time.time()
-        for t in range(steps):
-            self.t = t
+        while self.t < self.t0 + steps + 1:
             self.r, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
 
             self.dumpobj(self)
             self.thermoobj(self)
+
+            self.t += 1
         end = time.time()
         print("Elapsed time: ", end-start)
 

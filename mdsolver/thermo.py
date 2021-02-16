@@ -7,16 +7,22 @@ class Thermo:
 
     @staticmethod
     def make_header(f, quantities):
-        header = " ".join(quantities)
+        header = ""
+        for quantity in quantities:
+            header += "{:<12}".format(quantity)
+        # header = " ".join(quantities)
         f.write(header + "\n")
         print("\n" + header)
 
     def collect_data(self, solver, quantities):
         # temporary way to set particle types
-        dat = []
+        # dat = []
+        string = ""
         for quantity in quantities:
-            dat.append(getattr(self, quantity)(solver))
-        return ' '.join(map(str, dat))
+            string += "{:<12.3f}".format(getattr(self, quantity)(solver))
+            # dat.append(getattr(self, quantity)(solver))
+        # return ' '.join(map(str, dat))
+        return string
 
     def __call__(self, solver):
         if solver.t % self.freq == 0:
@@ -37,12 +43,29 @@ class Thermo:
         return solver.numparticles
 
     @staticmethod
+    def temp(solver):
+        return (solver.v**2).sum() / (solver.numparticles * solver.numdimensions)
+
+    @staticmethod
     def poteng(solver):
         return solver.u
 
     @staticmethod
     def kineng(solver):
         return (solver.v**2).sum()/2
+
+    @staticmethod
+    def velcorr(solver):
+        if solver.t == solver.t0:
+            solver.v0 = solver.v
+            solver.v02 = solver.v0**2
+        return ((solver.v * solver.v0) / solver.v02).sum() / solver.numparticles
+
+    @staticmethod
+    def mse(solver):
+        if solver.t == solver.t0:
+            solver.r0 = solver.r
+        return ((solver.r - solver.r0)**2).sum() / solver.numparticles
 
     def __del__(self):
         self.f.close()
