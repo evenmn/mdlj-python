@@ -11,27 +11,14 @@ The position is plotted as a function of time, energy is not plotted
 """
 
 from mdsolver import MDSolver
-from mdsolver.potential import LennardJones
-from mdsolver.integrator import ForwardEuler
-from mdsolver.initpositions import SetPositions
-from mdsolver.initvelocities import SetVelocities
+from mdsolver.initpositions import SetPosition
+from mdsolver.initvelocities import SetVelocity
 from mdsolver.boundaryconditions import Reflective
 
 # Simulate two particles in one dimension separated by a distance 1.5 sigma
-solver = MDSolver(positions=SetPositions([[1.0, 1.0]]), 
-                  velocities=SetVelocities([[1.0, 1.0]]),
+solver = MDSolver(positions=SetPosition([[1.0, 1.0]]), 
+                  velocities=SetVelocity([[1.0, 1.0]]),
                   boundaries=Reflective(lenbox=2), 
-                  T=10, 
                   dt=0.01)
-solver(potential=LennardJones(solver), 
-       integrator=ForwardEuler(solver),
-       poteng=False)
-
-# Plot the position as a function of time
-from numpy import linspace
-from matplotlib.pyplot import plot, show, xlabel, ylabel
-r = solver.r.flatten()
-plot(linspace(0,10,len(r)), r)
-xlabel("Time [ps]")
-ylabel("Position")
-show()
+solver.dump(1, "1N_2D.xyz", "x", "y")
+solver.run(steps=1000)
