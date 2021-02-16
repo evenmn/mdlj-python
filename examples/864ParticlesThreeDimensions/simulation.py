@@ -5,23 +5,59 @@ Time step: 0.01 ps
 Potential: Lennard-Jones
 Integrator: Velocity-Verlet
 """
+import matplotlib.pyplot as plt
 
 from mdsolver import MDSolver
-from mdsolver.initpositions import FCC, Restart
+from mdsolver.analyze import Log
+from mdsolver.initpositions import FCC
 from mdsolver.initvelocities import Temperature
 from mdsolver.boundaryconditions import Periodic
 
 solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
-                  velocities=Temperature(T=1.5),
+                  velocities=Temperature(T=2.5),
                   boundaries=Periodic(lenbox=12),
                   dt=0.01)
 
 # equilibration run
 solver.thermo(10, "864N_3D_equi.log", "step", "time")
-solver.run(steps=100)
+solver.run(steps=1000)
+solver.snapshot("after_equi.xyz")
 
 # production run
-solver.dump(10, "864N_3D.xyz", "x", "y", "z")
-solver.thermo(10, "864N_3D_prod.log", "step", "time", "poteng", "kineng")
-solver.run(steps=100)
-solver.snapshot("snapshot.xyz")
+solver.dump(1, "864N_3D.xyz", "x", "y", "z")
+solver.thermo(1, "864N_3D_prod.log", "step", "time", "temp", "poteng", "kineng", "velcorr", "mse")
+solver.run(steps=1000)
+solver.snapshot("final.xyz")
+
+# analyze
+logobj = Log("864N_3D_prod.log")
+time = logobj.find("time")
+temp = logobj.find("temp")
+poteng = logobj.find("poteng")
+kineng = logobj.find("kineng")
+velcorr = logobj.find("velcorr")
+mse = logobj.find("mse")
+
+plt.figure()
+plt.plot(time, temp)
+plt.xlabel(r"Time, $t/\tau$")
+plt.ylabel(r"Temperature, $T/T'$")
+
+plt.figure()
+plt.plot(time, velcorr)
+plt.xlabel(r"Time, $t/\tau$")
+plt.ylabel("Velocity-autocorrelation")
+
+plt.figure()
+plt.plot(time, mse)
+plt.xlabel(r"Time, $t/\tau$")
+plt.ylabel("Mean-squared displacement")
+
+plt.figure()
+plt.plot(time, poteng, label="Potential")
+plt.plot(time, kineng, label="Kinetic")
+plt.plot(time, poteng + kineng, label="Total")
+plt.xlabel(r"Time, $t/\tau$")
+plt.ylabel(r"Energy, $E/\varepsilon$")
+plt.legend(loc='best')
+plt.show()
