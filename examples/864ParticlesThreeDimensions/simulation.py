@@ -17,11 +17,11 @@ solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
                   dt=0.01)
 
 # equilibration run
-solver.thermo(10, "864N_3D.log", "step", "time")
+solver.thermo(10, "864N_3D_equi.log", "step", "time")
 solver.run(steps=100)
 
 # production run
 solver.dump(10, "864N_3D.xyz", "x", "y", "z")
-solver.thermo(10, "864N_3D.log", "step", "time", "poteng", "kineng")
+solver.thermo(10, "864N_3D_prod.log", "step", "time", "poteng", "kineng")
 solver.run(steps=100)
 solver.snapshot("snapshot.xyz")
