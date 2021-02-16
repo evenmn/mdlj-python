@@ -50,5 +50,17 @@ class Dump:
     def vz(solver):
         return solver.v[:, 2]
 
+    @staticmethod
+    def ax(solver):
+        return solver.a[:, 0]
+
+    @staticmethod
+    def ay(solver):
+        return solver.a[:, 1]
+
+    @staticmethod
+    def az(solver):
+        return solver.a[:, 2]
+
     def __del__(self):
         self.f.close()

@@ -45,10 +45,14 @@ class MDSolver:
         # Initialize velocities
         self.v = velocities(self.numparticles, self.numdimensions)
 
+        # Set objects
         self.compute_poteng = False
         self.boundaries = boundaries
         self.integrator = self.VelocityVerlet(self)
         self.potential = self.LennardJones(self, cutoff=3)
+
+        # Initialize acceleration
+        self.a, _ = self.potential(self.r)
 
         # print to terminal
         self.print_to_terminal()
@@ -115,15 +119,11 @@ class MDSolver:
         integrator : obj
             object defining the integrator
         """
-
-        # Compute initial acceleration, potential energy and distance matrix
-        a, self.u = self.potential(self.r, return_energy=self.compute_poteng)
-
         # Integration loop
         start = time.time()
         for t in range(steps):
             self.t = t
-            self.r, self.v, a, u = self.integrator(self.r, self.v, a)
+            self.r, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
 
             self.dumpobj(self)
             self.thermoobj(self)
