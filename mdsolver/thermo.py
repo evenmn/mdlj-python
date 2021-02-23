@@ -10,18 +10,13 @@ class Thermo:
         header = ""
         for quantity in quantities:
             header += "{:<12}".format(quantity)
-        # header = " ".join(quantities)
         f.write(header + "\n")
         print("\n" + header)
 
     def collect_data(self, solver, quantities):
-        # temporary way to set particle types
-        # dat = []
         string = ""
         for quantity in quantities:
             string += "{:<12.3f}".format(getattr(self, quantity)(solver))
-            # dat.append(getattr(self, quantity)(solver))
-        # return ' '.join(map(str, dat))
         return string
 
     def __call__(self, solver):
