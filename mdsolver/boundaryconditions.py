@@ -40,7 +40,7 @@ class Open(Boundaries):
         ndarray
             number of times passed though walls
         """
-        return r, np.zeros(r.shape, int)
+        return r, np.zeros_like(r)
 
     @staticmethod
     def checkVelocity(v):
@@ -98,10 +98,10 @@ class Reflective(Boundaries):
             number of times passed though walls
         """
         self.r = r
-        num_through_wall = np.floor(r/self.lenbox)
+        num_through_wall = np.floor(r/self.lenbox) * self.lenbox
         r = np.where(r > self.lenbox, 2*self.lenbox - r, r)
         r = np.where(r < 0, - r, r), num_through_wall
-        return r
+        return r, num_through_wall
 
     def checkVelocity(self, v):
         """ Check if the velocities satisfy the boundary conditions.
@@ -157,8 +157,8 @@ class Periodic(Boundaries):
         ndarray
             number of times passed though walls
         """
-        num_through_wall = np.floor(r/self.lenbox).astype(int)
-        return r - num_through_wall * self.lenbox, num_through_wall
+        num_through_wall = np.floor(r/self.lenbox) * self.lenbox
+        return r - num_through_wall, num_through_wall
 
     @staticmethod
     def checkVelocity(v):
