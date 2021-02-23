@@ -91,13 +91,44 @@ class MDSolver:
             self.compute_poteng = False
         self.thermoobj = self.Thermo(freq, file, quantities)
 
-    def snapshot(self, filename):
+    def snapshot(self, filename, vel=False):
         """Take snapshot of system and write to xyz-file
         """
-        lst = ('x', 'y', 'z')
+        if vel:
+            lst = ('x', 'y', 'z', 'vx', 'vy', 'vz')
+        else:
+            lst = ('x', 'y', 'z')
         tmp_dumpobj = self.Dump(1, filename, lst[:self.numdimensions])
         tmp_dumpobj(self)
         del tmp_dumpobj
+
+    def write_rdf(self, filename, max_radius, nbins=50):
+        bin_edges = np.linspace(0, max_radius, nbins)
+        bin_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
+        bin_sizes = bin_edges[1:] - bin_edges[:-1]
+
+        x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
+        dr = x - y
+        drUpperNorm = np.linalg.norm(dr[np.triu_indices(self.numparticles, 1)], axis=1)
+
+        n = np.histogram(drUpperNorm, bins=bin_edges)[0]
+        n[0] = 0
+
+        min_ = np.min(self.r, axis=0)
+        max_ = np.max(self.r, axis=0)
+
+        length = max_ - min_
+        volume = np.prod(length)
+
+        norm = [1, 2*np.pi*bin_centres, 4*np.pi*bin_centres**2]
+
+        rdf = volume / self.numparticles * n / (norm[self.numdimensions-1]*bin_sizes)
+
+        import matplotlib.pyplot as plt
+        plt.plot(bin_edges[1:], rdf)
+        plt.show()
+
+        np.savetxt(filename, rdf)
 
     def print_to_terminal(self):
         """ Print information to terminal
