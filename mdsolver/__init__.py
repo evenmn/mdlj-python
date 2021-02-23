@@ -56,7 +56,7 @@ class MDSolver:
         self.a, _ = self.potential(self.r)
 
         # Initialize the number of times each particle has touched the wall
-        self.n = np.zeros(self.r.shape, int)
+        self.n = np.zeros_like(self.r)
 
         # print to terminal
         self.print_to_terminal()
@@ -103,6 +103,8 @@ class MDSolver:
         del tmp_dumpobj
 
     def write_rdf(self, filename, max_radius, nbins=50):
+        """Radial distribution function (RDF)
+        """
         bin_edges = np.linspace(0, max_radius, nbins)
         bin_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
         bin_sizes = bin_edges[1:] - bin_edges[:-1]
@@ -121,13 +123,7 @@ class MDSolver:
         volume = np.prod(length)
 
         norm = [1, 2*np.pi*bin_centres, 4*np.pi*bin_centres**2]
-
         rdf = volume / self.numparticles * n / (norm[self.numdimensions-1]*bin_sizes)
-
-        import matplotlib.pyplot as plt
-        plt.plot(bin_edges[1:], rdf)
-        plt.show()
-
         np.savetxt(filename, rdf)
 
     def print_to_terminal(self):
