@@ -27,26 +27,22 @@ class SetVelocity(InitVelocity):
     def __init__(self, velocity):
         self.velocity = velocity
 
-    def __call__(self, par, dim):
+    def __call__(self, shape):
         """ Get the velocity.
 
         Parameters
         ----------
-        par : int
-            number of particles
-        dim : int
-            number of dimensions
+        shape: tuple
+            shape of position matrix (par, dim)
 
         Returns
         -------
         ndarray
             initial velocity configuration
         """
-        assert len(self.velocity) == par, \
-               "Number of velocities needs to match number of particles"
-        assert len(self.velocity[0]) == dim, \
-               "Velocity dim needs to match particle dim"
-        return np.asarray(self.velocity)
+        velocity = np.asarray(self.velocity)
+        assert velocity.shape == shape
+        return velocity
 
 
 class Zero(InitVelocity):
@@ -55,22 +51,20 @@ class Zero(InitVelocity):
     def __init__(self):
         pass
 
-    def __call__(self, par, dim):
+    def __call__(self, shape):
         """ Get the velocity.
 
         Parameters
         ----------
-        par : int
-            number of particles
-        dim : int
-            number of dimensions
+        shape: tuple
+            shape of position matrix (par, dim)
 
         Returns
         -------
         ndarray
             initial velocity configuration
         """
-        return np.zeros((par, dim))
+        return np.zeros(shape)
 
 
 class Gauss(InitVelocity):
@@ -87,22 +81,20 @@ class Gauss(InitVelocity):
         self.mean = mean
         self.var = var
 
-    def __call__(self, par, dim):
+    def __call__(self, shape):
         """ Get the velocity.
 
         Parameters
         ----------
-        par : int
-            number of particles
-        dim : int
-            number of dimensions
+        shape: tuple
+            shape of position matrix (par, dim)
 
         Returns
         -------
         ndarray
             initial velocity configuration
         """
-        return np.random.normal(self.mean, self.var, size=(par, dim))
+        return np.random.normal(self.mean, self.var, size=shape)
 
 
 class Temperature(Gauss):
