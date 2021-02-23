@@ -1,177 +1,189 @@
 import numpy as np
 
+
 class Boundaries:
     """ Boundary condition class. Ensures that the positions, velocities
     and forces act according to the desired boundary condition.
     """
     def __init__(self):
         pass
-    
+
     def checkPosition(self, r):
-        raise NotImplementedError ("Class {} has no instance 'checkPosition'."
-                                   .format(self.__class__.__name__))
-                                   
+        raise NotImplementedError("Class {} has no instance 'checkPosition'."
+                                  .format(self.__class__.__name__))
+
+
 class Open(Boundaries):
     """ Open boundary conditions. Does not alter positions, velocities or
     forces.
     """
     def __init__(self):
         pass
-        
+
     @staticmethod
     def __repr__():
         return "Open boundaries"
-        
+
     @staticmethod
     def checkPosition(r):
         """ Check if the positions satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         r : ndarray
             current position array
-            
+
         Returns
         -------
         ndarray
             changed position array
+        ndarray
+            number of times passed though walls
         """
-        return r
-        
+        return r, np.zeros(r.shape, int)
+
     @staticmethod
     def checkVelocity(v):
         """ Check if the velocities satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         v : ndarray
             current velocity array
-            
+
         Returns
         -------
         ndarray
             changed velocity array
         """
         return v
-        
+
     @staticmethod
     def checkDistance(dr):
         """ Check if the distance vectors satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         dr : ndarray
             current distance vectors
-            
+
         Returns
         -------
         ndarray
             changed distance vectors
         """
         return dr
-        
+
+
 class Reflective(Boundaries):
     def __init__(self, lenbox):
         self.lenbox = lenbox
-        
+
     def __repr__(self):
         return "Reflective boundaries with box length {}".format(self.lenbox)
-        
+
     def checkPosition(self, r):
         """ Check if the positions satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         r : ndarray
             current position array
-            
+
         Returns
         -------
         ndarray
             changed position array
+        ndarray
+            number of times passed though walls
         """
         self.r = r
-        r = np.where(r>self.lenbox, 2*self.lenbox - r, r)
-        r = np.where(r<0, - r, r)
+        num_through_wall = np.floor(r/self.lenbox)
+        r = np.where(r > self.lenbox, 2*self.lenbox - r, r)
+        r = np.where(r < 0, - r, r), num_through_wall
         return r
-        
+
     def checkVelocity(self, v):
         """ Check if the velocities satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         v : ndarray
             current velocity array
-            
+
         Returns
         -------
         ndarray
             changed velocity array
         """
         return np.where(self.r//self.lenbox == 0, v, -v)
-        
+
     @staticmethod
     def checkDistance(dr):
         """ Check if the distance vectors satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         dr : ndarray
             current distance vectors
-            
+
         Returns
         -------
         ndarray
             changed distance vectors
         """
         return dr
-        
+
+
 class Periodic(Boundaries):
     def __init__(self, lenbox):
         self.lenbox = lenbox
-        
+
     def __repr__(self):
         return "Periodic boundaries with box length {}".format(self.lenbox)
-        
+
     def checkPosition(self, r):
         """ Check if the positions satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         r : ndarray
             current position array
-            
+
         Returns
         -------
         ndarray
             changed position array
+        ndarray
+            number of times passed though walls
         """
-        return r - np.floor(r/self.lenbox) * self.lenbox
-        
+        num_through_wall = np.floor(r/self.lenbox).astype(int)
+        return r - num_through_wall * self.lenbox, num_through_wall
+
     @staticmethod
     def checkVelocity(v):
         """ Check if the velocities satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         v : ndarray
             current velocity array
-            
+
         Returns
         -------
         ndarray
             changed velocity array
         """
         return v
-        
+
     def checkDistance(self, dr):
         """ Check if the distance vectors satisfy the boundary conditions.
-        
+
         Parameters
         ----------
         dr : ndarray
             current distance vectors
-            
+
         Returns
         -------
         ndarray

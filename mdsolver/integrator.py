@@ -167,8 +167,8 @@ class VelocityVerlet(Integrator):
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt + 0.5 * a * self.dt**2
-        r = self.boundaries.checkPosition(r)
+        r, n = self.boundaries.checkPosition(r)
         a_new, u = self.solver.potential(r, self.solver.compute_poteng)
         v += 0.5 * (a_new + a) * self.dt
         v = self.boundaries.checkVelocity(v)
-        return r, v, a_new, u
+        return r, n, v, a_new, u

@@ -40,11 +40,11 @@ class MDSolver:
 
         # Initialize positions
         self.r = positions()
-        self.numparticles = self.r.shape[0]
-        self.numdimensions = self.r.shape[1]
 
         # Initialize velocities
-        self.v = velocities(self.numparticles, self.numdimensions)
+        self.v = velocities(self.r.shape)
+
+        self.numparticles, self.numdimensions = self.r.shape
 
         # Set objects
         self.compute_poteng = False
@@ -54,6 +54,9 @@ class MDSolver:
 
         # Initialize acceleration
         self.a, _ = self.potential(self.r)
+
+        # Initialize the number of times each particle has touched the wall
+        self.n = np.zeros(self.r.shape, int)
 
         # print to terminal
         self.print_to_terminal()
@@ -124,7 +127,8 @@ class MDSolver:
         # Integration loop
         start = time.time()
         while self.t < self.t0 + steps + 1:
-            self.r, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
+            self.r, n, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
+            self.n += n
 
             self.dumpobj(self)
             self.thermoobj(self)
