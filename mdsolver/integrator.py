@@ -25,6 +25,9 @@ class ForwardEuler(Integrator):
         self.boundaries = solver.boundaries
         self.dt = solver.dt
 
+    def __str__(self):
+        return "forward-euler"
+
     def __repr__(self):
         """ Representing the integrator.
         """
@@ -80,6 +83,9 @@ class EulerCromer(Integrator):
         self.boundaries = solver.boundaries
         self.dt = solver.dt
 
+    def __str__(self):
+        return "euler-cromer"
+
     def __repr__(self):
         """ Representing the integrator.
         """
@@ -134,6 +140,9 @@ class VelocityVerlet(Integrator):
         self.solver = solver
         self.boundaries = solver.boundaries
         self.dt = solver.dt
+
+    def __str__(self):
+        return "velocity-verlet"
 
     def __repr__(self):
         """ Representing the integrator.
