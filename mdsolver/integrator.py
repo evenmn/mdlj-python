@@ -64,8 +64,8 @@ class ForwardEuler(Integrator):
         return r, n, v, a, u
 
 
-class EulerChromer(Integrator):
-    """ Euler-Chromer integrator, based on the integration scheme
+class EulerCromer(Integrator):
+    """ Euler-Cromer integrator, based on the integration scheme
         v[i+1] = v[i] + a * dt
         r[i+1] = r[i] + v[i+1] * dt
 
@@ -83,7 +83,7 @@ class EulerChromer(Integrator):
     def __repr__(self):
         """ Representing the integrator.
         """
-        return "Euler-Chromer integrator"
+        return "Euler-Cromer integrator"
 
     def __call__(self, r, v, a):
         """ This function calculated the new position and velocity based on
