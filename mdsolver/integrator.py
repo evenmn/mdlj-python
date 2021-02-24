@@ -58,10 +58,10 @@ class ForwardEuler(Integrator):
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt
         v += a * self.dt
-        r = self.boundaries.checkPosition(r)
+        r, n = self.boundaries.checkPosition(r)
         v = self.boundaries.checkVelocity(v)
         a, u = self.solver.potential(r, self.solver.compute_poteng)
-        return r, v, a, u
+        return r, n, v, a, u
 
 
 class EulerChromer(Integrator):
@@ -113,10 +113,10 @@ class EulerChromer(Integrator):
         r, v, a = r.copy(), v.copy(), a.copy()
         v += a * self.dt
         r += v * self.dt
-        r = self.boundaries.checkPosition(r)
+        r, n = self.boundaries.checkPosition(r)
         v = self.boundaries.checkVelocity(v)
         a, u = self.solver.potential(r, self.solver.compute_poteng)
-        return r, v, a, u
+        return r, n, v, a, u
 
 
 class VelocityVerlet(Integrator):

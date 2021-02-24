@@ -46,6 +46,9 @@ class LennardJones(Potential):
         """
         return "Lennard-Jones potential"
 
+    def set_boundary(self, boundary):
+        self.boundaries = boundary
+
     def calculateDistanceMatrix(self, r):
         """ Compute the distance matrix (squared) at timestep t. In the
         integration loop, we only need the distance squared, which
