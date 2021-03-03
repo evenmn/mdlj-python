@@ -1,3 +1,6 @@
+import re
+
+
 class Thermo:
     def __init__(self, freq, file, quantities):
         self.freq = freq
@@ -16,7 +19,12 @@ class Thermo:
     def collect_data(self, solver, quantities):
         string = ""
         for quantity in quantities:
-            string += "{:<12.3f}".format(getattr(self, quantity)(solver))
+            if "[" in quantity:
+                label = quantity.split('[')[0]
+                indices = re.findall(r"(?<!\.)\d+(?!\.)", quantity)
+                string += "{:<12.3f}".format(getattr(self, label)(solver, *tuple(map(int, indices))))
+            else:
+                string += "{:<12.3f}".format(getattr(self, quantity)(solver))
         return string
 
     def __call__(self, solver):
@@ -62,6 +70,18 @@ class Thermo:
             solver.r0 = solver.r
         r = solver.r + solver.n
         return ((r - solver.r0)**2).sum() / solver.numparticles
+
+    @staticmethod
+    def r(solver, i, j):
+        return solver.r[i, j]
+
+    @staticmethod
+    def v(solver, i, j):
+        return solver.v[i, j]
+
+    @staticmethod
+    def a(solver, i, j):
+        return solver.a[i, j]
 
     def __del__(self):
         self.f.close()
