@@ -8,4 +8,5 @@ setup(name='mdsolver',
       author_email='even.nordhagen@live.no',
       license='MIT',
       packages=['mdsolver'],
+      install_requires=["numpy", "tqdm"],
       zip_safe=False)
