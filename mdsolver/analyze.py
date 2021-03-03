@@ -47,3 +47,21 @@ class Log:
     def get_keywords(self):
         """Return list of available data columns in the log file."""
         print(", ".join(self.keywords))
+
+
+class RDF:
+    """Class for analyzing RDF files.
+    """
+    def __init__(self, filename):
+        if hasattr(filename, "read"):
+            rdffile = filename
+        else:
+            rdffile = open(filename, 'r')
+        self.read_file_to_array(rdffile)
+
+    def read_file_to_array(self, rdffile):
+        # read three first lines, which should be information lines
+        self.contents = np.loadtxt(rdffile)
+
+    def get(self):
+        return self.contents
