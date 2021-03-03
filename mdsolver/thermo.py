@@ -28,10 +28,11 @@ class Thermo:
         return string
 
     def __call__(self, solver):
+        dat = ""
         if solver.t % self.freq == 0:
-            dat = self.collect_data(solver, self.quantities)
-            self.f.write(dat + "\n")
-            print(dat)
+            dat = self.collect_data(solver, self.quantities) + "\n"
+            self.f.write(dat)
+        return dat
 
     @staticmethod
     def step(solver):

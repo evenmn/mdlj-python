@@ -1,4 +1,5 @@
 import time
+import tqdm
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -139,7 +140,7 @@ class MDSolver:
         print("Timestep:             ", self.dt)
         print(50 * "=" + "\n\n")
 
-    def run(self, steps):
+    def run(self, steps, out="tqdm"):
         """ Integration loop. Computes the time-development of position and
         velocity using a given integrator and inter-atomic potential.
 
@@ -151,18 +152,26 @@ class MDSolver:
             object defining the integrator
         """
         self.t0 = self.t
+
         # Integration loop
+        iterations = range(self.t0, self.t0 + steps + 1)
+        if out == "tqdm":
+            iterations = tqdm.tqdm(iterations)
+	    
         start = time.time()
-        while self.t < self.t0 + steps + 1:
+        for self.t in iterations:
             self.r, n, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
             self.n += n
 
             self.dumpobj(self)
-            self.thermoobj(self)
+            log = self.thermoobj(self)
+            if out == "log":
+                print(log, end="")
 
             self.t += 1
         end = time.time()
-        print("Elapsed time: ", end-start)
+        if out == "log":
+            print("Elapsed time: ", end-start)
 
     def __del__(self):
         del self.dumpobj, self.thermoobj
