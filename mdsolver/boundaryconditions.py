@@ -100,7 +100,7 @@ class Reflective(Boundaries):
         self.r = r
         num_through_wall = np.floor(r/self.lenbox) * self.lenbox
         r = np.where(r > self.lenbox, 2*self.lenbox - r, r)
-        r = np.where(r < 0, - r, r), num_through_wall
+        r = np.where(r < 0, - r, r)
         return r, num_through_wall
 
     def checkVelocity(self, v):
