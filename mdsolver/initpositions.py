@@ -37,7 +37,7 @@ class SetPosition(InitPosition):
         ndarray
             initial particle configuration
         """
-        return asarray(self.position)
+        return asarray(self.position, dtype=float)
 
 
 class FCC(InitPosition):
@@ -69,7 +69,7 @@ class FCC(InitPosition):
             initial particle configuration
         """
         par = (self.dim+1) * self.cells ** self.dim
-        r = zeros((par, self.dim))
+        r = zeros((par, self.dim), dtype=float)
         counter = 0
         if self.dim == 1:
             for i in range(self.cells):
