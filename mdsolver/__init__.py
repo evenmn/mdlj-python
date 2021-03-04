@@ -168,6 +168,10 @@ class MDSolver:
         iterations = range(self.t0, self.t0 + steps + 1)
         if out == "tqdm":
             iterations = tqdm.tqdm(iterations)
+        elif out == "log":
+            self.thermoobj.make_header()
+        else:
+            raise NotImplementedError(f"Output mode '{out}' is unavailable")
 	    
         start = time.time()
         for self.t in iterations:
