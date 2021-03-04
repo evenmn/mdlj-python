@@ -1,5 +1,6 @@
 import time
 import tqdm
+import datetime
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -62,8 +63,8 @@ class MDSolver:
         # print to terminal
         self.print_to_terminal()
 
-        self.dump(np.inf, "file.dump")
-        self.thermo(np.inf, "file.thermo")
+        self.dumpobj = self.Dump(np.inf, "dump.xyz", ())
+        self.thermoobj = self.Thermo(np.inf, "log.mdsolver", ())        
 
     def __repr__(self):
         return "MDSolver base class"
@@ -71,21 +72,25 @@ class MDSolver:
     def set_potential(self, potential):
         """Set force-field
         """
+        print("\nPotential changed, new potential: ", str(potential))
         self.potential = potential
 
     def set_integrator(self, integrator):
         """Set integrator
         """
+        print("\nIntegrator changed, new integrator: ", str(integrator))
         self.integrator = integrator
 
     def dump(self, freq, file, *quantities):
         """Dump atom-quantities to file
         """
+        print(f"\nDumping every {freq}nd", *quantities, f"to file '{file}'")
         self.dumpobj = self.Dump(freq, file, quantities)
 
     def thermo(self, freq, file, *quantities):
         """Print thermo-quantities to file
         """
+        print(f"\nPrinting every {freq}nd", *quantities, f"to file '{file}'")
         if "poteng" in quantities:
             self.compute_poteng = True
         else:
@@ -95,6 +100,7 @@ class MDSolver:
     def snapshot(self, filename, vel=False):
         """Take snapshot of system and write to xyz-file
         """
+        print(f"\nSnapshot saved to file '{filename}'")
         if vel:
             lst = ('x', 'y', 'z', 'vx', 'vy', 'vz')
         else:
@@ -106,6 +112,8 @@ class MDSolver:
     def write_rdf(self, filename, max_radius, nbins=50):
         """Radial distribution function (RDF)
         """
+        print(f"\nWriting radial distribution function to file '{filename}'")
+        print(f"Max radius: {max_radius}. Number of bins: {nbins}")
         bin_edges = np.linspace(0, max_radius, nbins)
         bin_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
         bin_sizes = bin_edges[1:] - bin_edges[:-1]
@@ -130,7 +138,9 @@ class MDSolver:
     def print_to_terminal(self):
         """ Print information to terminal
         """
-        print("\n\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
+        now = datetime.datetime.now()
+        print(f"Simulation started at {now:%Y-%m-%d %H:%M:%S}")
+        print("\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
         print("")
@@ -138,7 +148,7 @@ class MDSolver:
         print("Boundary conditions:  ", self.boundaries)
         print("Integrator:           ", self.integrator)
         print("Timestep:             ", self.dt)
-        print(50 * "=" + "\n\n")
+        print(50 * "=")
 
     def run(self, steps, out="tqdm"):
         """ Integration loop. Computes the time-development of position and
@@ -151,6 +161,7 @@ class MDSolver:
         integrator : obj
             object defining the integrator
         """
+        print(f"\nRunning {steps} time steps. Output mode {out}")
         self.t0 = self.t
 
         # Integration loop
