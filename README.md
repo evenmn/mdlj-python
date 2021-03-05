@@ -12,8 +12,8 @@ $ cd Python-MD
 $ pip install .
 ```
 
-## Example usage
-A example script could look like this:
+## Example: Two oscillating particles in one dimension
+A simple example where two particles interact with periodic motion can be implemented like this:
 ``` python
 from mdsolver import MDSolver
 from mdsolver.initpositions import SetPosition
@@ -23,4 +23,28 @@ solver.thermo(1, "log.mdsolver", "step", "time", "poteng", "kineng")
 solver.run(steps=1000)
 ```
 
+## Example: 864 particles in three dimensions with PBC
+A more complex example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
+``` python
+from mdsolver import MDSolver
+from mdsolver.initpositions import FCC
+from mdsolver.initvelocities import Temperature
+from mdsolver.boundaryconditions import Periodic
+
+solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
+                  velocities=Temperature(T=2.5),
+                  boundaries=Periodic(lenbox=12),
+                  dt=0.01)
+
+# equilibration run
+solver.thermo(10, "864N_3D_equi.log", "step", "time")
+solver.run(steps=1000)
+solver.snapshot("after_equi.xyz")
+
+# production run
+solver.dump(1, "864N_3D.xyz", "x", "y", "z")
+solver.thermo(1, "864N_3D_prod.log", "step", "time", "temp", "poteng", "kineng", "velcorr", "mse")
+solver.run(steps=1000, out="log")
+solver.snapshot("final.xyz")
+```
 For more examples, see the examples folder.
