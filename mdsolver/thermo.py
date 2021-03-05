@@ -6,14 +6,16 @@ class Thermo:
         self.freq = freq
         self.quantities = quantities
         self.f = open(file, 'w')
-        # self.make_header(self.f, quantities)
+        self.make_header()
 
     def make_header(self):
-        header = ""
+        self.header = ""
         for quantity in self.quantities:
-            header += "{:<12}".format(quantity)
-        self.f.write(header + "\n")
-        print("\n" + header)
+            self.header += "{:<12}".format(quantity)
+        self.f.write(self.header + "\n")
+
+    def write_header(self):
+        print("\n" + self.header)
 
     def collect_data(self, solver, quantities):
         string = ""

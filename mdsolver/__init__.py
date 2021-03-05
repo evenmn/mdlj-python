@@ -169,7 +169,7 @@ class MDSolver:
         if out == "tqdm":
             iterations = tqdm.tqdm(iterations)
         elif out == "log":
-            self.thermoobj.make_header()
+            self.thermoobj.write_header()
         else:
             raise NotImplementedError(f"Output mode '{out}' is unavailable")
 	    
