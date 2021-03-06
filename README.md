@@ -37,14 +37,25 @@ solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
                   dt=0.01)
 
 # equilibration run
-solver.thermo(10, "864N_3D_equi.log", "step", "time")
+solver.thermo(10, "equilibration.log", "step", "time")
 solver.run(steps=1000)
 solver.snapshot("after_equi.xyz")
 
 # production run
 solver.dump(1, "864N_3D.xyz", "x", "y", "z")
-solver.thermo(1, "864N_3D_prod.log", "step", "time", "temp", "poteng", "kineng", "velcorr", "mse")
+solver.thermo(1, "production.log", "step", "time", "temp", "poteng", "kineng")
 solver.run(steps=1000, out="log")
 solver.snapshot("final.xyz")
 ```
+
+## Post-process simulations
+The thermo style outputs (temperature, energy etc...) are stored in a log file, rather than in arrays. This has two purposes: Storing thermo style outputs in arrays might be memory intensive, and the file can be kept for later simulations. Reading these log files (here `production.log`) can easily be done using the Log-class:
+``` python
+from mdsolver.analyze import Log
+logobj = Log("production.log")
+time = logobj.find("time")
+temp = logobj.find("temp")
+```
+The `find`-method outputs a numpy array.
+
 For more examples, see the examples folder.
