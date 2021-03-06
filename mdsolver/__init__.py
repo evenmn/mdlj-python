@@ -1,3 +1,4 @@
+import sys
 import time
 import tqdm
 import datetime
@@ -64,10 +65,25 @@ class MDSolver:
         self.print_to_terminal()
 
         self.dumpobj = self.Dump(np.inf, "dump.xyz", ())
-        self.thermoobj = self.Thermo(np.inf, "log.mdsolver", ())        
+        self.thermoobj = self.Thermo(np.inf, "log.mdsolver", ())
 
     def __repr__(self):
         return "MDSolver base class"
+
+    def print_to_terminal(self):
+        """ Print information to terminal
+        """
+        now = datetime.datetime.now()
+        print(f"Simulation started at {now:%Y-%m-%d %H:%M:%S}")
+        print("\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
+        print("Number of particles:  ", self.numparticles)
+        print("Number of dimensions: ", self.numdimensions)
+        print("")
+        print("Potential:            ", self.potential)
+        print("Boundary conditions:  ", self.boundaries)
+        print("Integrator:           ", self.integrator)
+        print("Timestep:             ", self.dt, " s")
+        print(50 * "=")
 
     def set_potential(self, potential):
         """Set force-field
@@ -84,13 +100,13 @@ class MDSolver:
     def dump(self, freq, file, *quantities):
         """Dump atom-quantities to file
         """
-        print(f"\nDumping every {freq}nd", *quantities, f"to file '{file}'")
+        print(f"\nDumping every {freq}th (", ", ".join(quantities), f") to file '{file}'")
         self.dumpobj = self.Dump(freq, file, quantities)
 
     def thermo(self, freq, file, *quantities):
         """Print thermo-quantities to file
         """
-        print(f"\nPrinting every {freq}nd", *quantities, f"to file '{file}'")
+        print(f"\nPrinting every {freq}th (", ", ".join(quantities), f") to file '{file}'")
         if "poteng" in quantities:
             self.compute_poteng = True
         else:
@@ -135,21 +151,6 @@ class MDSolver:
         rdf = volume / self.numparticles * n / (norm[self.numdimensions-1]*bin_sizes)
         np.savetxt(filename, rdf)
 
-    def print_to_terminal(self):
-        """ Print information to terminal
-        """
-        now = datetime.datetime.now()
-        print(f"Simulation started at {now:%Y-%m-%d %H:%M:%S}")
-        print("\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
-        print("Number of particles:  ", self.numparticles)
-        print("Number of dimensions: ", self.numdimensions)
-        print("")
-        print("Potential:            ", self.potential)
-        print("Boundary conditions:  ", self.boundaries)
-        print("Integrator:           ", self.integrator)
-        print("Timestep:             ", self.dt)
-        print(50 * "=")
-
     def run(self, steps, out="tqdm"):
         """ Integration loop. Computes the time-development of position and
         velocity using a given integrator and inter-atomic potential.
@@ -167,12 +168,13 @@ class MDSolver:
         # Integration loop
         iterations = range(self.t0, self.t0 + steps + 1)
         if out == "tqdm":
+            sys.stdout.flush()
             iterations = tqdm.tqdm(iterations)
         elif out == "log":
             self.thermoobj.write_header()
         else:
             raise NotImplementedError(f"Output mode '{out}' is unavailable")
-	    
+
         start = time.time()
         for self.t in iterations:
             self.r, n, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
@@ -187,6 +189,8 @@ class MDSolver:
         end = time.time()
         if out == "log":
             print("Elapsed time: ", end-start)
+        self.dumpobj.f.flush()
+        self.thermoobj.f.flush()
 
     def __del__(self):
         del self.dumpobj, self.thermoobj
