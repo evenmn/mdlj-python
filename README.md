@@ -31,9 +31,9 @@ from mdsolver.initposition import FCC
 from mdsolver.initvelocity import Temperature
 from mdsolver.boundary import Periodic
 
-solver = MDSolver(position=FCC(cells=6, lenbulk=10),
+solver = MDSolver(position=FCC(cells=6, lenbulk=10.2),
                   velocity=Temperature(T=2.5),
-                  boundary=Periodic(lenbox=12),
+                  boundary=Periodic(lenbox=10.2),
                   dt=0.01)
 
 # equilibration run
