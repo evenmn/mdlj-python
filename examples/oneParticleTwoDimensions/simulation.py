@@ -11,14 +11,14 @@ The position is plotted as a function of time, energy is not plotted
 """
 
 from mdsolver import MDSolver
-from mdsolver.initpositions import SetPosition
-from mdsolver.initvelocities import SetVelocity
-from mdsolver.boundaryconditions import Reflective
+from mdsolver.initposition import SetPosition
+from mdsolver.initvelocity import SetVelocity
+from mdsolver.boundary import Reflective
 
 # Simulate two particles in one dimension separated by a distance 1.5 sigma
-solver = MDSolver(positions=SetPosition([[1.0, 1.0]]), 
-                  velocities=SetVelocity([[1.0, 1.0]]),
-                  boundaries=Reflective(lenbox=2), 
+solver = MDSolver(position=SetPosition([[1.0, 1.0]]), 
+                  velocity=SetVelocity([[1.0, 1.0]]),
+                  boundary=Reflective(lenbox=2), 
                   dt=0.01)
 solver.dump(1, "1N_2D.xyz", "x", "y")
 solver.run(steps=1000)
