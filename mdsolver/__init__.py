@@ -36,7 +36,7 @@ class MDSolver:
     from .integrator import VelocityVerlet
     from .potential import LennardJones
 
-    def __init__(self, dt, positions, velocities=Zero(), boundaries=Open()):
+    def __init__(self, dt, positions, velocities=Zero(), boundaries=Open(), info=True):
 
         self.t = 0
         self.dt = dt
@@ -62,7 +62,9 @@ class MDSolver:
         self.n = np.zeros_like(self.r)
 
         # print to terminal
-        self.print_to_terminal()
+        self.info = info
+        if self.info:
+            self.print_to_terminal()
 
         self.dumpobj = self.Dump(np.inf, "dump.xyz", ())
         self.thermoobj = self.Thermo(np.inf, "log.mdsolver", ())
@@ -88,25 +90,29 @@ class MDSolver:
     def set_potential(self, potential):
         """Set force-field
         """
-        print("\nPotential changed, new potential: ", str(potential))
+        if self.info:
+            print("\nPotential changed, new potential: ", str(potential))
         self.potential = potential
 
     def set_integrator(self, integrator):
         """Set integrator
         """
-        print("\nIntegrator changed, new integrator: ", str(integrator))
+        if self.info:
+            print("\nIntegrator changed, new integrator: ", str(integrator))
         self.integrator = integrator
 
     def dump(self, freq, file, *quantities):
         """Dump atom-quantities to file
         """
-        print(f"\nDumping every {freq}th (", ", ".join(quantities), f") to file '{file}'")
+        if self.info:
+            print(f"\nDumping every {freq}th (", ", ".join(quantities), f") to file '{file}'")
         self.dumpobj = self.Dump(freq, file, quantities)
 
     def thermo(self, freq, file, *quantities):
         """Print thermo-quantities to file
         """
-        print(f"\nPrinting every {freq}th (", ", ".join(quantities), f") to file '{file}'")
+        if self.info:
+            print(f"\nPrinting every {freq}th (", ", ".join(quantities), f") to file '{file}'")
         if "poteng" in quantities:
             self.compute_poteng = True
         else:
@@ -116,7 +122,8 @@ class MDSolver:
     def snapshot(self, filename, vel=False):
         """Take snapshot of system and write to xyz-file
         """
-        print(f"\nSnapshot saved to file '{filename}'")
+        if self.info:
+            print(f"\nSnapshot saved to file '{filename}'")
         if vel:
             lst = ('x', 'y', 'z', 'vx', 'vy', 'vz')
         else:
@@ -128,8 +135,9 @@ class MDSolver:
     def write_rdf(self, filename, max_radius, nbins="auto"):
         """Radial distribution function (RDF)
         """
-        print(f"\nWriting radial distribution function to file '{filename}'")
-        print(f"Max radius: {max_radius}. Number of bins: {nbins}")
+        if self.info:
+            print(f"\nWriting radial distribution function to file '{filename}'")
+            print(f"Max radius: {max_radius}. Number of bins: {nbins}")
 
         # volume computation
         min_ = np.min(self.r, axis=0)
@@ -140,7 +148,7 @@ class MDSolver:
         # compute distance between all particles (with PBC)
         x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
         dr = x - y
-        dr -= np.round(dr/length)*length
+        dr = self.boundaries.checkDistance(dr)
         drNorm = np.linalg.norm(dr, axis=2).flatten()
     
         # count number of distances within each bin
@@ -167,7 +175,8 @@ class MDSolver:
         integrator : obj
             object defining the integrator
         """
-        print(f"\nRunning {steps} time steps. Output mode {out}")
+        if self.info:
+            print(f"\nRunning {steps} time steps. Output mode {out}")
         self.t0 = self.t
 
         # Integration loop
@@ -177,8 +186,7 @@ class MDSolver:
             iterations = tqdm.tqdm(iterations)
         elif out == "log":
             self.thermoobj.write_header()
-        else:
-            raise NotImplementedError(f"Output mode '{out}' is unavailable")
+        # else: whatever else will give no output ("no", "off", "false" etc)
 
         start = time.time()
         for self.t in iterations:
