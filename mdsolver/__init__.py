@@ -30,28 +30,28 @@ class MDSolver:
 
     from .dump import Dump
     from .thermo import Thermo
-    from .initpositions import FCC
-    from .initvelocities import Zero
-    from .boundaryconditions import Open
+    from .initposition import FCC
+    from .initvelocity import Zero
+    from .boundary import Open
     from .integrator import VelocityVerlet
     from .potential import LennardJones
 
-    def __init__(self, dt, positions, velocities=Zero(), boundaries=Open(), info=True):
+    def __init__(self, dt, position, velocity=Zero(), boundary=Open(), info=True):
 
         self.t = 0
         self.dt = dt
 
-        # Initialize positions
-        self.r = positions()
+        # Initialize position
+        self.r = position()
 
-        # Initialize velocities
-        self.v = velocities(self.r.shape)
+        # Initialize velocity
+        self.v = velocity(self.r.shape)
 
         self.numparticles, self.numdimensions = self.r.shape
 
         # Set objects
         self.compute_poteng = False
-        self.boundaries = boundaries
+        self.boundary = boundary
         self.integrator = self.VelocityVerlet(self)
         self.potential = self.LennardJones(self, cutoff=3)
 
@@ -82,7 +82,7 @@ class MDSolver:
         print("Number of dimensions: ", self.numdimensions)
         print("")
         print("Potential:            ", self.potential)
-        print("Boundary conditions:  ", self.boundaries)
+        print("Boundary conditions:  ", self.boundary)
         print("Integrator:           ", self.integrator)
         print("Timestep:             ", self.dt)
         print(50 * "=")
@@ -148,7 +148,7 @@ class MDSolver:
         # compute distance between all particles (with PBC)
         x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
         dr = x - y
-        dr = self.boundaries.checkDistance(dr)
+        dr = self.boundary.checkDistance(dr)
         drNorm = np.linalg.norm(dr, axis=2).flatten()
     
         # count number of distances within each bin

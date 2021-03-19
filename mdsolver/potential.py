@@ -32,7 +32,7 @@ class LennardJones(Potential):
     def __init__(self, solver, cutoff=3):
         self.cutoff = cutoff
         self.cutoffSqrd = cutoff * cutoff
-        self.boundaries = solver.boundaries
+        self.boundary = solver.boundary
 
         # Generate indices of upper and lower triangles
         par = solver.numparticles
@@ -47,7 +47,7 @@ class LennardJones(Potential):
         return "Lennard-Jones potential"
 
     def set_boundary(self, boundary):
-        self.boundaries = boundary
+        self.boundary = boundary
 
     def calculateDistanceMatrix(self, r):
         """ Compute the distance matrix (squared) at timestep t. In the
@@ -76,7 +76,7 @@ class LennardJones(Potential):
         # Find distance vector matrix and distance matrix
         x, y = r[:, np.newaxis, :], r[np.newaxis, :, :]
         drAll = x - y                                 # distance vector matrix
-        drAll = self.boundaries.checkDistance(drAll)  # check if satisfy bc
+        drAll = self.boundary.checkDistance(drAll)  # check if satisfy bc
         distanceSqrdAll = np.einsum('ijk,ijk->ij', drAll, drAll)    # r^2
 
         # Pick the upper triangular elements only from the matrices and flatten
