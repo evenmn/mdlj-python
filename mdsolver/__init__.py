@@ -82,7 +82,7 @@ class MDSolver:
         print("Potential:            ", self.potential)
         print("Boundary conditions:  ", self.boundaries)
         print("Integrator:           ", self.integrator)
-        print("Timestep:             ", self.dt, " s")
+        print("Timestep:             ", self.dt)
         print(50 * "=")
 
     def set_potential(self, potential):
@@ -125,31 +125,36 @@ class MDSolver:
         tmp_dumpobj(self)
         del tmp_dumpobj
 
-    def write_rdf(self, filename, max_radius, nbins=50):
+    def write_rdf(self, filename, max_radius, nbins="auto"):
         """Radial distribution function (RDF)
         """
         print(f"\nWriting radial distribution function to file '{filename}'")
         print(f"Max radius: {max_radius}. Number of bins: {nbins}")
-        bin_edges = np.linspace(0, max_radius, nbins)
-        bin_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
-        bin_sizes = bin_edges[1:] - bin_edges[:-1]
 
-        x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
-        dr = x - y
-        drUpperNorm = np.linalg.norm(dr[np.triu_indices(self.numparticles, 1)], axis=1)
-
-        n = np.histogram(drUpperNorm, bins=bin_edges)[0]
-        n[0] = 0
-
+        # volume computation
         min_ = np.min(self.r, axis=0)
         max_ = np.max(self.r, axis=0)
-
         length = max_ - min_
         volume = np.prod(length)
+    
+        # compute distance between all particles (with PBC)
+        x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
+        dr = x - y
+        dr -= np.round(dr/length)*length
+        drNorm = np.linalg.norm(dr, axis=2).flatten()
+    
+        # count number of distances within each bin
+        n, bin_edges = np.histogram(drNorm, bins=nbins, range=(0, max_radius))
+        n[0] = 0
+    
+        # find bin centeres and bin widths
+        bin_centres = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+        bin_sizes = bin_edges[1:] - bin_edges[:-1]
 
+        # normalize 
         norm = [1, 2*np.pi*bin_centres, 4*np.pi*bin_centres**2]
-        rdf = volume / self.numparticles * n / (norm[self.numdimensions-1]*bin_sizes)
-        np.savetxt(filename, rdf)
+        rdf = (volume / self.numparticles**2) * n / (norm[self.numdimensions-1]*bin_sizes)
+        np.savetxt(filename, [bin_centres, rdf])
 
     def run(self, steps, out="tqdm"):
         """ Integration loop. Computes the time-development of position and
