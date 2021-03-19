@@ -4,11 +4,11 @@ Molecular dynamics solver with the Lennard-Jones potential written in object-ori
 ## Installation
 First download the contents:
 ``` bash
-$ git clone https://github.com/evenmn/Python-MD
+$ git clone https://github.com/evenmn/mdlj-python
 ```
 and then install the mdsolver:
 ``` bash
-$ cd Python-MD
+$ cd mdlj-python
 $ pip install .
 ```
 
