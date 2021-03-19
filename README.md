@@ -8,7 +8,7 @@ $ git clone https://github.com/evenmn/Python-MD
 ```
 and then install the mdsolver:
 ``` bash
-$ cd Python-MD
+$ cd mdlj-python
 $ pip install .
 ```
 
