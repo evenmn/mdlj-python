@@ -16,9 +16,9 @@ $ pip install .
 A simple example where two particles interact with periodic motion can be implemented like this:
 ``` python
 from mdsolver import MDSolver
-from mdsolver.initpositions import SetPosition
+from mdsolver.initposition import SetPosition
 
-solver = MDSolver(positions=SetPosition([[0.0], [1.5]]), dt=0.01)
+solver = MDSolver(position=SetPosition([[0.0], [1.5]]), dt=0.01)
 solver.thermo(1, "log.mdsolver", "step", "time", "poteng", "kineng")
 solver.run(steps=1000)
 ```
@@ -27,13 +27,13 @@ solver.run(steps=1000)
 A more complex example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
 ``` python
 from mdsolver import MDSolver
-from mdsolver.initpositions import FCC
-from mdsolver.initvelocities import Temperature
-from mdsolver.boundaryconditions import Periodic
+from mdsolver.initposition import FCC
+from mdsolver.initvelocity import Temperature
+from mdsolver.boundary import Periodic
 
-solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
-                  velocities=Temperature(T=2.5),
-                  boundaries=Periodic(lenbox=12),
+solver = MDSolver(position=FCC(cells=6, lenbulk=10),
+                  velocity=Temperature(T=2.5),
+                  boundary=Periodic(lenbox=12),
                   dt=0.01)
 
 # equilibration run
