@@ -138,7 +138,7 @@ class VelocityVerlet(Integrator):
     def __repr__(self):
         """ Representing the integrator.
         """
-        return "VelocityVerlet integrator"
+        return "Velocity Verlet integrator"
 
     def __call__(self, r, v, a):
         """ This function calculated the new position and velocity based on
