@@ -74,7 +74,7 @@ class MDSolver:
         """ Print information to terminal
         """
         now = datetime.datetime.now()
-        print(f"Simulation started at {now:%Y-%m-%d %H:%M:%S}")
+        print(f"Simulation started on {now:%Y-%m-%d %H:%M:%S}")
         print("\n" + 14 * "=", " SYSTEM INFORMATION ", 14 * "=")
         print("Number of particles:  ", self.numparticles)
         print("Number of dimensions: ", self.numdimensions)
@@ -82,7 +82,7 @@ class MDSolver:
         print("Potential:            ", self.potential)
         print("Boundary conditions:  ", self.boundaries)
         print("Integrator:           ", self.integrator)
-        print("Timestep:             ", self.dt, " s")
+        print("Timestep:             ", self.dt)
         print(50 * "=")
 
     def set_potential(self, potential):
@@ -132,23 +132,26 @@ class MDSolver:
         print(f"Max radius: {max_radius}. Number of bins: {nbins}")
         bin_edges = np.linspace(0, max_radius, nbins)
         bin_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
-        bin_sizes = bin_edges[1:] - bin_edges[:-1]
+        bin_size = bin_edges[1] - bin_edges[0]
 
-        x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
-        dr = x - y
-        drUpperNorm = np.linalg.norm(dr[np.triu_indices(self.numparticles, 1)], axis=1)
-
-        n = np.histogram(drUpperNorm, bins=bin_edges)[0]
-        n[0] = 0
-
+        # volume computation
         min_ = np.min(self.r, axis=0)
         max_ = np.max(self.r, axis=0)
 
         length = max_ - min_
         volume = np.prod(length)
 
+        x, y = self.r[:, np.newaxis, :], self.r[np.newaxis, :, :]
+        dr = x - y
+        dr -= np.round(dr/length)*length
+        drNorm = np.linalg.norm(dr, axis=2).flatten()
+
+        n = np.histogram(drNorm, bins=bin_edges)[0]
+        print(n)
+        n[0] = 0
+
         norm = [1, 2*np.pi*bin_centres, 4*np.pi*bin_centres**2]
-        rdf = volume / self.numparticles * n / (norm[self.numdimensions-1]*bin_sizes)
+        rdf = (volume / self.numparticles**2) * n / (norm[self.numdimensions-1]*bin_size)
         np.savetxt(filename, rdf)
 
     def run(self, steps, out="tqdm"):
