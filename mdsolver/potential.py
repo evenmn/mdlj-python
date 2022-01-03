@@ -40,6 +40,7 @@ class LennardJones(Potential):
         self.forceShell = np.zeros((par, par, dim))
         self.upperTri = np.triu_indices(par, 1)
         self.index = np.array(self.upperTri).T
+        self.shift = par * (cutoff**(-12) - cutoff**(-6))
 
     def __repr__(self):
         """ Representing the potential.
@@ -90,7 +91,7 @@ class LennardJones(Potential):
         return distanceSqrdAll, distanceSqrd, dr, indices
 
     @staticmethod
-    def potentialEnergy(u, cutoff):
+    def potentialEnergy(u, shift):
         """ Calculates the total potential energy, based on
         the potential energies of all particles stored in the matrix
         u. Shifts the potential according to the cutoff.
@@ -108,7 +109,7 @@ class LennardJones(Potential):
             total potential energy
         """
         u[u == np.inf] = 0
-        return 4 * (np.sum(u) - cutoff**(-12) - cutoff**(-6))
+        return 4 * (np.sum(u) - shift)
 
     def __call__(self, r, return_energy=False):
         """ Lennard-Jones inter-atomic force. This is used in the
@@ -145,7 +146,7 @@ class LennardJones(Potential):
         # Return net force on each particle and potetial energy
         forceParticles = np.sum(forceMatrix, axis=1)
         if return_energy:
-            u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv, self.cutoff)
+            u = self.potentialEnergy(distancePowTwelveInv - distancePowSixInv, self.shift)
         else:
             u = None
         return forceParticles, u
