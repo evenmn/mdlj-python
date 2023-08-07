@@ -13,7 +13,7 @@ $ pip install .
 ```
 
 ## Example: Two oscillating particles in one dimension
-A simple example where two particles interact with periodic motion can be implemented like this:
+A simple example where two particles interact with periodic motion:
 ``` python
 from mdsolver import MDSolver
 from mdsolver.initposition import SetPosition
@@ -24,7 +24,7 @@ solver.run(steps=1000)
 ```
 
 ## Example: 864 particles in three dimensions with PBC
-A more complex example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
+A more advanced example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
 ``` python
 from mdsolver import MDSolver
 from mdsolver.initposition import FCC
@@ -48,7 +48,7 @@ solver.run(steps=1000, out="log")
 solver.snapshot("final.xyz")
 ```
 
-## Post-process simulations
+## Post-process analysis
 The thermo style outputs (temperature, energy etc...) are stored in a log file, rather than in arrays. This has two purposes: Storing thermo style outputs in arrays might be memory intensive, and the file can be kept for later simulations. Reading these log files (here `production.log`) can easily be done using the Log-class:
 ``` python
 from mdsolver.analyze import Log
