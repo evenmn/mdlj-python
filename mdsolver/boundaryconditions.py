@@ -6,7 +6,7 @@ class Boundaries:
     and forces act according to the desired boundary condition.
     """
     def __init__(self):
-        pass
+        self.lenbox = 0.;
 
     def checkPosition(self, r):
         raise NotImplementedError("Class {} has no instance 'checkPosition'."

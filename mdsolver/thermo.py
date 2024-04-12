@@ -70,7 +70,7 @@ class Thermo:
     def mse(solver):
         if solver.t == solver.t0:
             solver.r0 = solver.r
-        r = solver.r + solver.n
+        r = solver.r + solver.n * solver.boundaries.lenbox
         return ((r - solver.r0)**2).sum() / solver.numparticles
 
     @staticmethod
