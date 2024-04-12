@@ -63,8 +63,8 @@ class Thermo:
     def velcorr(solver):
         if solver.t == solver.t0:
             solver.v0 = solver.v
-            solver.v02 = solver.v0**2
-        return ((solver.v * solver.v0) / solver.v02).sum() / solver.numparticles
+            solver.v02sum = (solver.v0**2).sum()
+        return (solver.v * solver.v0).sum() / solver.v02sum
 
     @staticmethod
     def mse(solver):

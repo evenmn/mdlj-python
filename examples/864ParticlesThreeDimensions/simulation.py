@@ -1,7 +1,7 @@
 """ Example: 864 particles in a box with periodic boundaries
 Initial positions: Face-centered cube
 Initial velocities: Temperatured-based
-Time step: 0.01 ps
+Time step: 0.01
 Potential: Lennard-Jones
 Integrator: Velocity-Verlet
 """
@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 
 from mdsolver import MDSolver
 from mdsolver.analyze import Log
-from mdsolver.initpositions import FCC
-from mdsolver.initvelocities import Temperature
-from mdsolver.boundaryconditions import Periodic
+from mdsolver.initposition import FCC
+from mdsolver.initvelocity import Temperature
+from mdsolver.boundary import Periodic
 
-solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
-                  velocities=Temperature(T=2.5),
-                  boundaries=Periodic(lenbox=12),
+solver = MDSolver(position=FCC(cells=6, lenbulk=10.2),
+                  velocity=Temperature(T=2.5),
+                  boundary=Periodic(lenbox=10.2),
                   dt=0.01)
 
 # equilibration run
@@ -26,7 +26,7 @@ solver.snapshot("after_equi.xyz")
 # production run
 solver.dump(1, "864N_3D.xyz", "x", "y", "z")
 solver.thermo(1, "864N_3D_prod.log", "step", "time", "temp", "poteng", "kineng", "velcorr", "mse")
-solver.run(steps=1000)
+solver.run(steps=1000, out="log")
 solver.snapshot("final.xyz")
 
 # analyze

@@ -10,9 +10,9 @@ The distance between the particles and the energy is plotted
 """
 
 from mdsolver import MDSolver
-from mdsolver.initpositions import SetPosition
+from mdsolver.initposition import SetPosition
 
 # Simulate two particles in one dimension separated by a distance 1.5 sigma
-solver = MDSolver(positions=SetPosition([[0.0], [1.5]]), dt=0.01)
+solver = MDSolver(position=SetPosition([[0.0], [1.5]]), dt=0.01)
 solver.dump(1, "2N_1D.xyz", "x")
 solver.run(steps=1000)

@@ -22,7 +22,7 @@ class ForwardEuler(Integrator):
     """
     def __init__(self, solver):
         self.solver = solver
-        self.boundaries = solver.boundaries
+        self.boundary = solver.boundary
         self.dt = solver.dt
 
     def __repr__(self):
@@ -58,8 +58,8 @@ class ForwardEuler(Integrator):
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt
         v += a * self.dt
-        r, n = self.boundaries.checkPosition(r)
-        v = self.boundaries.checkVelocity(v)
+        r, n = self.boundary.checkPosition(r)
+        v = self.boundary.checkVelocity(v)
         a, u = self.solver.potential(r, self.solver.compute_poteng)
         return r, n, v, a, u
 
@@ -77,7 +77,7 @@ class EulerCromer(Integrator):
     """
     def __init__(self, solver):
         self.solver = solver
-        self.boundaries = solver.boundaries
+        self.boundary = solver.boundary
         self.dt = solver.dt
 
     def __repr__(self):
@@ -113,8 +113,8 @@ class EulerCromer(Integrator):
         r, v, a = r.copy(), v.copy(), a.copy()
         v += a * self.dt
         r += v * self.dt
-        r, n = self.boundaries.checkPosition(r)
-        v = self.boundaries.checkVelocity(v)
+        r, n = self.boundary.checkPosition(r)
+        v = self.boundary.checkVelocity(v)
         a, u = self.solver.potential(r, self.solver.compute_poteng)
         return r, n, v, a, u
 
@@ -132,7 +132,7 @@ class VelocityVerlet(Integrator):
     """
     def __init__(self, solver):
         self.solver = solver
-        self.boundaries = solver.boundaries
+        self.boundary = solver.boundary
         self.dt = solver.dt
 
     def __repr__(self):
@@ -167,8 +167,8 @@ class VelocityVerlet(Integrator):
         """
         r, v, a = r.copy(), v.copy(), a.copy()
         r += v * self.dt + 0.5 * a * self.dt**2
-        r, n = self.boundaries.checkPosition(r)
+        r, n = self.boundary.checkPosition(r)
         a_new, u = self.solver.potential(r, self.solver.compute_poteng)
         v += 0.5 * (a_new + a) * self.dt
-        v = self.boundaries.checkVelocity(v)
+        v = self.boundary.checkVelocity(v)
         return r, n, v, a_new, u

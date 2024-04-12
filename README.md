@@ -4,36 +4,36 @@ Molecular dynamics solver with the Lennard-Jones potential written in object-ori
 ## Installation
 First download the contents:
 ``` bash
-$ git clone https://github.com/evenmn/Python-MD
+$ git clone https://github.com/evenmn/mdlj-python
 ```
 and then install the mdsolver:
 ``` bash
-$ cd Python-MD
+$ cd mdlj-python
 $ pip install .
 ```
 
 ## Example: Two oscillating particles in one dimension
-A simple example where two particles interact with periodic motion can be implemented like this:
+A simple example where two particles interact with periodic motion:
 ``` python
 from mdsolver import MDSolver
-from mdsolver.initpositions import SetPosition
+from mdsolver.initposition import SetPosition
 
-solver = MDSolver(positions=SetPosition([[0.0], [1.5]]), dt=0.01)
+solver = MDSolver(position=SetPosition([[0.0], [1.5]]), dt=0.01)
 solver.thermo(1, "log.mdsolver", "step", "time", "poteng", "kineng")
 solver.run(steps=1000)
 ```
 
 ## Example: 864 particles in three dimensions with PBC
-A more complex example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
+A more advanced example where 6x6x6x4=864 particles in three dimensions interact and where the boundaries are periodic is shown below. The particles are initialized in a face-centered cube, and the initial temperature is 300K (2.5 in Lennard-Jones units). We first perform an equilibration run, and then a production run.
 ``` python
 from mdsolver import MDSolver
-from mdsolver.initpositions import FCC
-from mdsolver.initvelocities import Temperature
-from mdsolver.boundaryconditions import Periodic
+from mdsolver.initposition import FCC
+from mdsolver.initvelocity import Temperature
+from mdsolver.boundary import Periodic
 
-solver = MDSolver(positions=FCC(cells=6, lenbulk=10),
-                  velocities=Temperature(T=2.5),
-                  boundaries=Periodic(lenbox=12),
+solver = MDSolver(position=FCC(cells=6, lenbulk=10.2),
+                  velocity=Temperature(T=2.5),
+                  boundary=Periodic(lenbox=10.2),
                   dt=0.01)
 
 # equilibration run
@@ -48,7 +48,7 @@ solver.run(steps=1000, out="log")
 solver.snapshot("final.xyz")
 ```
 
-## Post-process simulations
+## Post-process analysis
 The thermo style outputs (temperature, energy etc...) are stored in a log file, rather than in arrays. This has two purposes: Storing thermo style outputs in arrays might be memory intensive, and the file can be kept for later simulations. Reading these log files (here `production.log`) can easily be done using the Log-class:
 ``` python
 from mdsolver.analyze import Log
